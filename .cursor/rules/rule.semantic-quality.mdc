@@ -101,9 +101,9 @@ class UserController { ... }
 
 **Objective:** Resources as plural nouns; HTTP verb on the method, not in the path.
 
-**Criteria:** Plural kebab-case collection (`/users`); item `/:id`; filters via query (`?email=`); no action segments (`/getUsers`, `/users/create`, `/users/all`). Truth source: controller `initRoutes()` + [service.yaml](../../src/contracts/service.yaml).
+**Criteria:** Plural kebab-case collection (`/users`); item `/:id`; filters via query (`?email=`); no action segments (`/getUsers`, `/users/create`, `/users/all`). Truth source: controller `initRoutes()` + [service.yaml](../../examples/canonical-user/src/contracts/service.yaml).
 
-> Note: the real routes are resource-style (`/users`, `/users/:id`), as in [user.controller.ts](../../src/application/controllers/user.controller.ts). Disregard the legacy `/authorizers/{recurso}/{ação}` example in `AGENTS.md` §7.4; `initRoutes()` + `service.yaml` are the source of truth.
+> Note: routes are resource-style (`/users`, `/users/:id`). Prefer the service’s controller `initRoutes()` + `src/contracts/service.yaml` as the source of truth. The `user` context is the canonical example pattern.
 
 ```ts
 // ❌

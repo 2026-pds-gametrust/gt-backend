@@ -1,6 +1,6 @@
 # Code quality toolkit (Cursor)
 
-Semantic naming, REST design, and light quality audits for **st-node-boilerplate**. Complements layer/architecture agents without duplicating them.
+Semantic naming, REST design, and light quality audits for **layered backend services**. Complements layer/architecture agents without duplicating them.
 
 ## When to use what
 
@@ -15,9 +15,10 @@ Semantic naming, REST design, and light quality audits for **st-node-boilerplate
 | **REST/OpenAPI design only** | **`agt-rest-endpoint-design`** |
 | **Rename suggestions (read-only)** | **`agt-naming-refactor`** |
 
-Invoke agents by name in chat or via the agent picker. Skills: `@skill-review-rest-endpoints`, `@skill-review-naming`, `@skill-spec-driven`.
+Invoke agents by name in chat or via the agent picker. Skills: `@skill-review-rest-endpoints`, `@skill-review-naming`, `@skill-spec-driven`. Full skill map (including scaffold skills): [SKILLS.md](SKILLS.md).
 
 Multi-step delivery (PO → gate → design → QA plan → implement → test → code review → QA verify → reviews → verify → optional PR): use [`agt-orchestrator`](agents/agt-orchestrator.md). Specs: [SPECS.md](SPECS.md).
+
 ## Rules (always-on context)
 
 | Rule | Focus |
@@ -58,7 +59,7 @@ rule.semantic-quality
 
 - **Use case** = `UserService.createUser`, not `CreateUserUseCase` class.
 - **DTO** = OpenAPI `components/schemas` (`NewUser`, `User`) + domain `IUser`.
-- **REST reference** = `GET/POST /users`, `GET/PUT/DELETE /users/:id` in [user.controller.ts](../src/application/controllers/user.controller.ts).
+- **REST reference** = resource-style routes such as `GET/POST /users`, `GET/PUT/DELETE /users/:id` in `src/application/controllers/<context>.controller.ts` (canonical example: `user`).
 - **Folders** = `infraestructure`, `configuration` (fixed spelling).
 - **Rule naming** = `rule.<kebab>.mdc` for layers, `meta.<kebab>.mdc` for meta; see [meta.cursor-rules.mdc](rules/meta.cursor-rules.mdc). Rules index: [RULES.md](RULES.md).
 

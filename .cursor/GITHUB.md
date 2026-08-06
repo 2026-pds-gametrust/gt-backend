@@ -1,14 +1,14 @@
 # GitHub toolkit (Cursor)
 
-Commits atômicos, Conventional Commits e criação de PR alinhada ao template do repositório.
+Atomic commits, Conventional Commits, and PR creation aligned with the service repository template.
 
 ## When to use what
 
 | Need | Use |
 |------|-----|
-| Commitar (1 arquivo/commit) + push + abrir PR | **`agt-github-workflow`** |
-| Referência de convenções, ordem e template | **`@skill-github-workflow`** |
-| Versionamento / semantic-release | [rule.release.mdc](rules/rule.release.mdc) |
+| Commit (1 file/commit) + push + open PR | **`agt-github-workflow`** |
+| Conventions, order, and template reference | **`@skill-github-workflow`** |
+| Versioning / semantic-release | [rule.release.mdc](rules/rule.release.mdc) |
 
 Invoke the agent by name in chat or via the agent picker. Skill: `@skill-github-workflow`.
 
@@ -19,7 +19,7 @@ Invoke the agent by name in chat or via the agent picker. Skill: `@skill-github-
 | PR base branch | `staging` |
 | Commits | 1 file = 1 commit |
 | Commit format | Conventional Commits (`feat:`, `fix:`, `docs:`, …) |
-| PR body | [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md) |
+| PR body | [.github/PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md) (per service; seed from [`docs/templates/PULL_REQUEST_TEMPLATE.md`](../docs/templates/PULL_REQUEST_TEMPLATE.md) via sync `--with-pr-template`) |
 | Attribution | **Never** `Made with Cursor` / AI footers — [rule.git-no-ai-attribution.mdc](rules/rule.git-no-ai-attribution.mdc) |
 
 Also disable product injection: **Cursor Settings → Agent → Attribution** (or **Git & PRs → Attribution**) — turn off Commit Attribution and PR Attribution. For CLI: `~/.cursor/cli-config.json` → `attribution.attributeCommitsToAgent` / `attributePRsToAgent` = `false`.

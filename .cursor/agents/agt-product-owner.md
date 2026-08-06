@@ -401,7 +401,7 @@ Human approval required: yes
 
 When no blocking question remains, finish with:
 
-**Aprovar requirements para seguir para as próximas etapas?**
+**Approve requirements to proceed to the next stages?**
 
 When a blocking question exists, request the missing decision instead.
 

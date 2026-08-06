@@ -1,9 +1,9 @@
 ---
 name: agt-naming-refactor
 description: >-
-  Read-only naming review and rename suggestions for TypeScript layered code in
-  this boilerplate — variables, methods, classes, files, I/IM interfaces, OpenAPI
-  schemas. Use when reviewing naming, refactors, or generic identifiers.
+  Read-only naming review and rename suggestions for TypeScript layered code —
+  variables, methods, classes, files, I/IM interfaces, OpenAPI schemas. Use when
+  reviewing naming, refactors, or generic identifiers.
 model: inherit
 readonly: true
 alwaysApply: false
@@ -25,7 +25,7 @@ Find **semantic naming** issues and propose **ordered, risk-rated** renames. Def
 - [.cursor/rules/rule.semantic-quality.mdc](../rules/rule.semantic-quality.mdc)
 - [.cursor/rules/rule.naming-patterns.mdc](../rules/rule.naming-patterns.mdc)
 - Playbook: [.cursor/skills/skill-review-naming/SKILL.md](../skills/skill-review-naming/SKILL.md)
-- Reference style: [src/domain/user/service/user.service.ts](../../src/domain/user/service/user.service.ts) (`existingUser`, `userEntity`)
+- Reference style: `src/domain/<context>/service/<context>.service.ts` (canonical: `user.service.ts` with `existingUser`, `userEntity`)
 
 ## Validation criteria
 

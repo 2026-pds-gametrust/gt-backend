@@ -1,61 +1,74 @@
-# Fluxo completo de feature (agents)
+# Full feature flow (agents)
 
-Como este repositório conduz uma demanda da ideia até a entrega validada.
-Complementa [SPECS.md](SPECS.md) (artefatos) e [AGENTS.md](../AGENTS.md) (contrato curto).
+How a demand moves from idea to validated delivery in a service that adopts this kit.
+Complements [SPECS.md](SPECS.md) (artifacts) and [AGENTS.md](../AGENTS.md) (short contract).
 
-**Entrada padrão:** invoque o **`agt-orchestrator`**. Ele classifica a intenção, monta o pipeline mínimo, aplica gates e despacha os especialistas — não implementa, não escreve specs e não committa sozinho.
+**Default entry for new features:** invoke **`agt-orchestrator`**. It classifies intent, builds the minimal pipeline, applies gates, and dispatches specialists — it does not implement, write specs, or commit on its own.
+
+## Choose a path first
+
+| Path | When | What to run |
+|------|------|-------------|
+| **A — Hotfix / typo** | Rename, 1 line, or ≤3 files; no OpenAPI/route change; criterion clear in the prompt | `agt-dev-backend` → `agt-test-author` (if behavior changed) → `agt-test-runner` → `agt-verifier` (skip full SDD) |
+| **B — Feature (SDD)** | New feature, endpoint, context, or contract change | **`agt-orchestrator`** (pipeline below) |
+| **C — Specialist only** | Requirements only, design only, QA only, review only, commit/PR only | Call that agent directly |
+| **D — Architecture discovery** | Repo **diverges** from kit layered / [`examples/canonical-user/`](../examples/canonical-user/) (or user explicitly overrides). **Skip** if the service already follows that layered shape. | See [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md) (`agt-architecture-probe` → `agt-pattern-miner` → `agt-pattern-steward` + gate) |
+
+Skill map (scaffold vs SDD vs review): [SKILLS.md](SKILLS.md). Canonical shapes: [`examples/canonical-user/`](../examples/canonical-user/).
 
 ---
 
-## Visão geral
+## Overview
 
 ```text
-Ideia / Jira / chat
+Idea / Jira / chat
         ↓
   agt-orchestrator
         ↓
   agt-product-owner  →  docs/specs/<slug>/requirements.md
         ↓
-  Gate humano (APPROVED explícito)
+  Human gate (explicit APPROVED)
         ↓
   agt-architecture   →  design.md  (+ tasks.md)
         ↓
-  agt-quality-assurance (PLAN)  →  test-plan.md   ← antes do código
+  agt-quality-assurance (PLAN)  →  test-plan.md   ← before code
         ↓
-  agt-dev-backend    →  implementação (lê tasks + test-plan)
+  agt-dev-backend    →  implementation (reads tasks + test-plan)
         ↓
-  agt-test-runner    →  suite Jest saudável
+  agt-test-author    →  Jest suites under src/__tests__/
         ↓
-  agt-code-review    →  findings tipados (read-only)
+  agt-test-runner    →  healthy Jest suite
         ↓
-  agt-quality-assurance (AUTOMATE + VERIFY)  →  testes + qa-report.md
+  agt-code-review    →  typed findings (read-only)
+        ↓
+  agt-quality-assurance (VERIFY)  →  qa-report.md
         ↓
   agt-architecture-review  ∥  agt-code-quality
         ↓
   agt-verifier
         ↓
-  agt-github-workflow  (só se pedido: commit / PR)
+  agt-github-workflow  (only if requested: commit / PR)
 ```
 
-Princípio: **shift-left** — requisitos, design e plano de testes existem *antes* do código. QA verifica requisitos aprovados, não justifica o que foi implementado.
+Principle: **shift-left** — requirements, design, and test plan exist *before* code. QA verifies approved requirements; it does not justify what was already implemented.
 
 ---
 
-## Artefatos por feature
+## Artifacts per feature
 
-Pasta: `docs/specs/<feature-slug>/`
+Folder: `docs/specs/<feature-slug>/`
 
-| Arquivo | Quem produz | Quando | Conteúdo |
-|---------|-------------|--------|----------|
-| `requirements.md` | `agt-product-owner` | Antes de tudo | Problema, regras, AC testáveis |
-| `design.md` | `agt-architecture` | Após requirements aprovados | Camadas, contratos, compatibilidade, rollout |
-| `tasks.md` | Arquitetura + `@skill-spec-driven` | Com o design | Fatias rastreáveis (`TASK-*` → `AC-*` / `TC-*`) |
-| `test-plan.md` | `agt-quality-assurance` (PLAN) | **Antes** do dev | Matriz AC → TC, prioridades P0–P3 |
-| `qa-report.md` | `agt-quality-assurance` (VERIFY) | **Depois** do código | Resultado com evidência |
+| File | Producer | When | Content |
+|------|----------|------|---------|
+| `requirements.md` | `agt-product-owner` | First | Problem, rules, testable ACs |
+| `design.md` | `agt-architecture` | After requirements approved | Layers, contracts, compatibility, rollout |
+| `tasks.md` | Architecture + `@skill-spec-driven` | With design | Traceable slices (`TASK-*` → `AC-*` / `TC-*`) |
+| `test-plan.md` | `agt-quality-assurance` (PLAN) | **Before** dev | AC → TC matrix, priorities P0–P3 |
+| `qa-report.md` | `agt-quality-assurance` (VERIFY) | **After** code | Evidence-based result |
 
 Templates: [`docs/specs/_templates/`](../docs/specs/_templates/).
 
-Metadados padrão no topo de cada documento:
+Standard metadata at the top of each document:
 
 ```yaml
 feature: <slug>
@@ -69,154 +82,156 @@ approvedBy: …
 approvedAt: …
 ```
 
-Agents devem **ler e preservar** esses campos — nunca descartá-los.
+Agents must **read and preserve** these fields — never drop them.
 
 ---
 
-## Agents e papéis
+## Agents and roles
 
-| Agent | Faz | Não faz |
-|-------|-----|---------|
-| [`agt-orchestrator`](agents/agt-orchestrator.md) | Classifica, sequencia, aplica gates, sintetiza | Editar `src/` ou specs |
-| [`agt-product-owner`](agents/agt-product-owner.md) | Requisitos, AC, DoR | Código, schema, library |
-| [`agt-architecture`](agents/agt-architecture.md) | `design.md` técnico | Editar `src/`; mudar regra de produto |
-| [`agt-quality-assurance`](agents/agt-quality-assurance.md) | PLAN / AUTOMATE / VERIFY | Alterar produção para “passar” teste |
-| [`agt-dev-backend`](agents/agt-dev-backend.md) | Implementar o slice aprovado | Reinterpretar regra ambígua |
-| [`agt-test-runner`](agents/agt-test-runner.md) | Estabilizar Jest / regressão técnica | Redefinir AC de produto |
-| [`agt-code-review`](agents/agt-code-review.md) | Review spec ↔ código (read-only) | Implementar correções |
-| [`agt-architecture-review`](agents/agt-architecture-review.md) | Auditoria de camadas pós-código | Escrever design (isso é `agt-architecture`) |
-| [`agt-code-quality`](agents/agt-code-quality.md) | Naming + REST | Substituir code review de spec |
-| [`agt-verifier`](agents/agt-verifier.md) | Evidência de entrega | Soften asserts |
-| [`agt-github-workflow`](agents/agt-github-workflow.md) | Commit atômico / PR | Rodar sem pedido explícito |
-| [`agt-jira-workflow`](agents/agt-jira-workflow.md) | Ler / criar Jira | Obrigatório em toda feature |
+| Agent | Does | Does not |
+|-------|------|----------|
+| [`agt-orchestrator`](agents/agt-orchestrator.md) | Classify, sequence, apply gates, synthesize | Edit `src/` or specs |
+| [`agt-product-owner`](agents/agt-product-owner.md) | Requirements, AC, DoR | Code, schema, library choices |
+| [`agt-architecture`](agents/agt-architecture.md) | Technical `design.md` | Edit `src/`; redefine product rules |
+| [`agt-quality-assurance`](agents/agt-quality-assurance.md) | PLAN / VERIFY (AUTOMATE dispatches author) | Write Jest; change production to “pass” a test |
+| [`agt-test-author`](agents/agt-test-author.md) | Create / extend unit & integration tests | Change production; own qa-report |
+| [`agt-dev-backend`](agents/agt-dev-backend.md) | Implement the approved slice | Reinterpret an ambiguous rule |
+| [`agt-test-runner`](agents/agt-test-runner.md) | Stabilize Jest / technical regression | Redefine product ACs |
+| [`agt-code-review`](agents/agt-code-review.md) | Spec ↔ code review (read-only) | Implement fixes |
+| [`agt-architecture-review`](agents/agt-architecture-review.md) | Post-code layer audit | Write design (that is `agt-architecture`) |
+| [`agt-code-quality`](agents/agt-code-quality.md) | Naming + REST | Replace spec-aware code review |
+| [`agt-verifier`](agents/agt-verifier.md) | Delivery evidence | Soften asserts |
+| [`agt-github-workflow`](agents/agt-github-workflow.md) | Atomic commit / PR | Run without an explicit request |
+| [`agt-jira-workflow`](agents/agt-jira-workflow.md) | Read / create Jira | Required on every feature |
 
-Skills associadas: `@skill-product-refinement`, `@skill-technical-design`, `@skill-quality-assurance`, `@skill-backend-implementation`, `@skill-code-review`, `@skill-spec-driven`.
+Related skills: `@skill-product-refinement`, `@skill-technical-design`, `@skill-quality-assurance`, `@skill-tests-layered`, `@skill-backend-implementation`, `@skill-code-review`, `@skill-spec-driven`.
 
 ---
 
-## Pipeline de feature (padrão)
+## Feature pipeline (default)
 
-### 1. Ideia → requisitos
+### 1. Idea → requirements
 
-1. Orchestrator classifica intent como `feature` (ou `specify` / `bugfix`).
-2. Opcional: `agt-jira-workflow` traz contexto do card.
-3. `agt-product-owner` (+ `@skill-product-refinement`) escreve `requirements.md`.
-4. **Gate humano:** só avance com decisão explícita:
+1. Orchestrator classifies intent as `feature` (or `specify` / `bugfix`).
+2. Optional: `agt-jira-workflow` brings card context.
+3. `agt-product-owner` (+ `@skill-product-refinement`) writes `requirements.md`.
+4. **Human gate:** advance only with an explicit decision:
 
 ```text
 APPROVED | CHANGES_REQUESTED | REJECTED | BLOCKED
 ```
 
-Comentário, elogio ou “revise” **não** aprovam.
+A comment, praise, or “please revise” does **not** approve.
 
-### 2. Design técnico
+### 2. Technical design
 
-1. `agt-architecture` (+ `@skill-technical-design`) produz `design.md`.
-2. Tasks rastreáveis em `tasks.md` (via skill / tech).
-3. Se o requisito for inviável ou contraditório → devolve pergunta ao PO (não redefine a regra no design).
-4. Gate técnico: `APPROVED` (ou `CHANGES_REQUESTED` volta à arquitetura).
+1. `agt-architecture` (+ `@skill-technical-design`) produces `design.md`.
+2. Traceable tasks in `tasks.md` (via skill / tech).
+3. If the requirement is infeasible or contradictory → return a question to PO (do not redefine the rule in design).
+4. Technical gate: `APPROVED` (or `CHANGES_REQUESTED` returns to architecture).
 
-Pode pular o design só quando a mudança toca um único contexto **sem** impacto em contrato, persistência ou mensageria.
+Skip design only when the change touches a single context **without** impact on contract, persistence, or messaging.
 
-### 3. QA PLAN (antes do código)
+### 3. QA PLAN (before code)
 
-1. `agt-quality-assurance` em modo **PLAN**.
-2. Entrada: `requirements.md` + `design.md`.
-3. Saída: `test-plan.md` (casos positivos/negativos, P0/P1, níveis unit/int/contrato/mensageria).
-4. Critérios impossíveis de testar voltam ao PO — desenvolvimento **não** inicia com AC cego.
+1. `agt-quality-assurance` in **PLAN** mode.
+2. Input: `requirements.md` + `design.md`.
+3. Output: `test-plan.md` (positive/negative cases, P0/P1, unit/int/contract/messaging levels).
+4. Untestable criteria return to PO — development does **not** start with a blind AC.
 
-Resultado operacional: `READY_FOR_DEVELOPMENT`.
+Operational result: `READY_FOR_DEVELOPMENT`.
 
-### 4. Implementação
+### 4. Implementation
 
-1. `agt-dev-backend` (+ `@skill-backend-implementation`) lê **requirements + design + tasks + test-plan**.
-2. Implementa só o slice aprovado; regras de negócio no Service; Domain ↛ Infraestructure.
-3. Desvios:
+1. `agt-dev-backend` (+ `@skill-backend-implementation`) reads **requirements + design + tasks + test-plan**.
+2. Implements only the approved slice; business rules in Service; Domain ↛ Infraestructure.
+3. Deviations:
 
 ```text
-Regra ambígua / ausente     → agt-product-owner
-Risco / inviabilidade       → agt-architecture
-AC impossível de testar     → QA + PO
-Mudança fora do escopo      → orchestrator + PO
+Ambiguous / missing rule     → agt-product-owner
+Risk / infeasibility         → agt-architecture
+Untestable AC                → QA + PO
+Out-of-scope change          → orchestrator + PO
 ```
 
-4. DoD do dev (lint, testes direcionados, OpenAPI se HTTP mudou) antes do handoff.
+4. Dev DoD (lint, targeted tests, OpenAPI if HTTP changed) before handoff.
 
-### 5. Suite técnica
+### 5. Technical suite
 
-`agt-test-runner` deixa a suite Jest saudável (regressão de tooling ≠ aceite de produto).
+`agt-test-runner` leaves the Jest suite healthy (tooling regression ≠ product acceptance).
 
 ### 6. Code review
 
-`agt-code-review` compara requirements ↔ design ↔ tasks ↔ implementação ↔ testes.
+`agt-code-review` compares requirements ↔ design ↔ tasks ↔ implementation ↔ tests.
 
-Categorias de finding:
+Finding categories:
 
 ```text
 BLOCKING_FUNCTIONAL | BLOCKING_ARCHITECTURE | BLOCKING_SECURITY | BLOCKING_CONTRACT
 NON_BLOCKING_IMPROVEMENT | STYLE | QUESTION
 ```
 
-Blocking → volta ao `agt-dev-backend`. Style / melhoria não-bloqueante não param o fluxo.
+Blocking → back to `agt-dev-backend`. Style / non-blocking improvements do not stop the flow.
 
-### 7. QA AUTOMATE + VERIFY
+### 7. Test author + QA VERIFY
 
-1. `agt-quality-assurance` automatiza o que estiver no test-plan (`src/__tests__/`).
-2. Executa comandos reais do `package.json` (test, coverage, lint, etc.).
-3. Escreve `qa-report.md` com resultado:
+1. `agt-test-author` automates what is in the test-plan under `src/__tests__/` (`when`/`should`, mock policy).
+2. `agt-quality-assurance` in **VERIFY** runs real `package.json` commands (test, coverage, lint, etc.).
+3. Writes `qa-report.md` with result:
 
-| Resultado | Significado | Próximo passo |
-|-----------|-------------|---------------|
-| `PASS` | P0/P1 ok, sem defect bloqueante | Segue |
-| `PASS_WITH_RISKS` | Core ok, riscos menores explícitos | **Aceite humano de risco** |
-| `FAIL` | AC obrigatório falhou / regressão / contrato / arch material | Volta ao dev |
-| `BLOCKED` | Ambiente / dado / credencial / regra indecidida | Orchestrator consolida |
+| Result | Meaning | Next step |
+|--------|---------|-----------|
+| `PASS` | P0/P1 ok, no blocking defect | Continue |
+| `PASS_WITH_RISKS` | Core ok, minor risks explicit | **Human risk acceptance** |
+| `FAIL` | Required AC failed / regression / contract / material arch | Back to dev |
+| `BLOCKED` | Environment / data / credential / undecidable rule | Orchestrator consolidates |
 
-Nunca enfraquecer assert para ficar verde.
+Never weaken an assert to go green.
 
-### 8. Reviews em paralelo + verifier
+### 8. Parallel reviews + verifier
 
 1. `agt-architecture-review` ∥ `agt-code-quality`.
-2. `agt-verifier` — wiring, lint, YAML, evidência de que “foi entregue”.
-3. Opcional, **só se pedido:** `agt-github-workflow` (commit / PR). Sem atribuição de IA no Git.
+2. `agt-verifier` — wiring, lint, YAML, evidence that “it was delivered”.
+3. Optional, **only if requested:** `agt-github-workflow` (commit / PR). No AI attribution in Git.
 
 ---
 
-## Atalhos (quando pular o SDD completo)
+## Shortcuts (when to skip full SDD)
 
-| Situação | Pipeline |
-|----------|----------|
-| Rename / typo / 1 linha | Um especialista; sem SDD |
-| Hotfix ≤ 3 arquivos, sem OpenAPI/rota, critério claro no prompt | `dev` → `test-runner` → `verifier` |
-| Bugfix que muda HTTP/OpenAPI | Pelo menos `requirements.md` antes do verifier |
-| Só requisitos | `agt-product-owner` → gate humano e para |
-| Só design | `agt-architecture` (requirements já aprovados) |
-| Só QA | `agt-quality-assurance` no modo pedido (PLAN / AUTOMATE / VERIFY) |
-| Só review | `agt-code-review` ou `architecture-review` ∥ `code-quality` |
-| Commit / PR | `agt-verifier` → `agt-github-workflow` (pedido explícito) |
+| Situation | Pipeline |
+|-----------|----------|
+| Rename / typo / 1 line | One specialist; no SDD |
+| Hotfix ≤ 3 files, no OpenAPI/route, clear criterion in the prompt | `dev` → `test-author` (if behavior changed) → `test-runner` → `verifier` |
+| Create / extend tests only | `agt-test-author` → `agt-test-runner` |
+| Bugfix that changes HTTP/OpenAPI | At least `requirements.md` before verifier |
+| Requirements only | `agt-product-owner` → human gate and stop |
+| Design only | `agt-architecture` (requirements already approved) |
+| QA only | `agt-quality-assurance` PLAN / VERIFY (AUTOMATE → dispatch `agt-test-author`) |
+| Review only | `agt-code-review` or `architecture-review` ∥ `code-quality` |
+| Commit / PR | `agt-verifier` → `agt-github-workflow` (explicit request) |
 
 ---
 
-## Gates e decisões
+## Gates and decisions
 
-Toda aprovação de produto/design/risco usa uma destas palavras — **nada implícito**:
+Every product/design/risk approval uses one of these words — **nothing implicit**:
 
 ```text
 APPROVED | CHANGES_REQUESTED | REJECTED | BLOCKED
 ```
 
-| Gate | Quem decide | Se falhar |
-|------|-------------|-----------|
-| Requirements | Humano responsável | Volta ao PO |
-| Design | Humano / tech | Volta à arquitetura (conflito de produto → PO) |
-| QA PLAN ok | Fluxo / orchestrator | Critérios bloqueados → PO |
+| Gate | Who decides | On failure |
+|------|-------------|------------|
+| Requirements | Responsible human | Back to PO |
+| Design | Human / tech | Back to architecture (product conflict → PO) |
+| QA PLAN ok | Flow / orchestrator | Blocked criteria → PO |
 | Code review | Reviewer (agent) | Blocking → dev |
-| QA VERIFY | Evidência + resultado | `FAIL` → dev; `PASS_WITH_RISKS` → aceite humano; `BLOCKED` → owner |
-| Commit / PR | Usuário explícito | Não chama github-workflow |
+| QA VERIFY | Evidence + result | `FAIL` → dev; `PASS_WITH_RISKS` → human acceptance; `BLOCKED` → owner |
+| Commit / PR | Explicit user | Do not call github-workflow |
 
 ---
 
-## Rastreabilidade
+## Traceability
 
 ```text
 OBJ-01
@@ -227,46 +242,55 @@ OBJ-01
            ├── TC-01  (test-plan)
            ├── TASK-01
            ├── src/__tests__/…
-           └── evidência no qa-report.md
+           └── evidence in qa-report.md
 ```
 
-Identificadores estáveis: `OBJ-*`, `ACT-*`, `US-*`, `BR-*`, `FLOW-*`, `AC-*`, `NFR-*`, `ASM-*`, `RQ-*`, `RISK-*`, `METRIC-*`, `DEC-*`, `TC-*`, `TASK-*`, `DEF-*`, `ARCH-*`.
+Stable identifiers: `OBJ-*`, `ACT-*`, `US-*`, `BR-*`, `FLOW-*`, `AC-*`, `NFR-*`, `ASM-*`, `RQ-*`, `RISK-*`, `METRIC-*`, `DEC-*`, `TC-*`, `TASK-*`, `DEF-*`, `ARCH-*`.
 
-Quando um requisito **já aprovado** muda: PO versiona + changelog → arquitetura faz impact analysis → QA atualiza test-plan → tasks afetadas → QA report registra a versão validada. Nenhum agent valida uma versão diferente da implementada.
-
----
-
-## Como usar no dia a dia
-
-1. **Feature nova:** no chat, peça ao `agt-orchestrator` (ou “rode o pipeline SDD”) com o problema — não só a solução técnica.
-2. No gate de requirements, responda com **`APPROVED`** (ou `CHANGES_REQUESTED` + o que mudar).
-3. Deixe o orchestrator conduzir design → QA PLAN → dev → review → QA VERIFY → verifier.
-4. Commit/PR só quando você pedir explicitamente.
-
-Pedido óbvio de um único papel (só PO, só QA, só PR) → chame o agent direto; o orchestrator também redireciona.
+When an **already approved** requirement changes: PO versions + changelog → architecture does impact analysis → QA updates test-plan → affected tasks → QA report records the validated version. No agent validates a version different from what was implemented.
 
 ---
 
-## O que ainda não faz parte deste fluxo
+## Day-to-day usage
 
-Reservado para evoluções posteriores (Fases 3–4 do guia de processo):
+1. **New feature:** in chat, ask `agt-orchestrator` (or “run the SDD pipeline”) with the problem — not only the technical solution.
+2. At the requirements gate, reply with **`APPROVED`** (or `CHANGES_REQUESTED` + what to change).
+3. Let the orchestrator drive design → QA PLAN → dev → review → QA VERIFY → verifier.
+4. Commit/PR only when you ask explicitly.
 
-- `agt-release` / `skill-release-readiness` / `release-report.md`
-- Outcome review pós-produção e máquina de estados formal aparte deste documento
-
-Release de versão do pacote continua em [rule.release.mdc](rules/rule.release.mdc) (semantic-release / Conventional Commits) — distinto de “prontidão operacional da feature”.
+An obvious single-role request (PO only, QA only, PR only) → call that agent directly; the orchestrator also redirects.
 
 ---
 
-## Referências rápidas
+## Not yet part of this flow
 
-| Doc | Para quê |
-|-----|----------|
-| [SPECS.md](SPECS.md) | Kit Spec-Driven, artefatos, skills |
-| [docs/specs/README.md](../docs/specs/README.md) | Convenção de pasta e templates |
-| [RULES.md](RULES.md) | Índice de rules por camada |
+Reserved for later process phases (optional; not required for kit adoption):
+
+- Post-production outcome review and a formal state machine outside this document
+
+**Do not confuse:**
+
+| Concern | Where |
+|---------|--------|
+| Cursor **kit** SemVer | Kit repo `VERSION` / `CHANGELOG.md` → `.cursor/KIT_VERSION` after sync ([ADOPTION.md](../docs/ADOPTION.md)) |
+| Service **package** release | [rule.release.mdc](rules/rule.release.mdc) (semantic-release / Conventional Commits in the service) |
+
+A dedicated `agt-release` / feature “release readiness” report is **out of scope** for now — use the service’s existing release pipeline and this kit’s version stamp instead.
+
+---
+
+## Quick references
+
+| Doc | Purpose |
+|-----|---------|
+| [SPECS.md](SPECS.md) | Spec-Driven kit, artifacts, skills |
+| [SKILLS.md](SKILLS.md) | Full skills map (scaffold / SDD / review / ops) |
+| [docs/specs/README.md](../docs/specs/README.md) | Folder convention and templates |
+| [RULES.md](RULES.md) | Per-layer rules index |
 | [QUALITY.md](QUALITY.md) | Naming / REST / audits |
-| [GITHUB.md](GITHUB.md) | Commits e PR |
-| [JIRA.md](JIRA.md) | Issues Jira |
-| [AGENTS.md](../AGENTS.md) | Contrato curto do repo |
-| [docs/architecture-and-layers.md](../docs/architecture-and-layers.md) | Camadas Domain → Configuration |
+| [GITHUB.md](GITHUB.md) | Commits and PRs |
+| [JIRA.md](JIRA.md) | Jira issues |
+| [AGENTS.md](../AGENTS.md) | Short service contract |
+| [docs/architecture-and-layers.md](../docs/architecture-and-layers.md) | Layers Domain → Configuration |
+| [docs/ADOPTION.md](../docs/ADOPTION.md) | How to sync this kit into a service |
+| [examples/canonical-user/](../examples/canonical-user/) | Illustrative `user` reference |

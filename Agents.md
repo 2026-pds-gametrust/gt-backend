@@ -1,117 +1,103 @@
-# `AGENTS.md` – st-node-boilerplate
+# AGENTS.md — layered backend contract
 
-Contrato curto para agentes. Detalhes de camadas: [`docs/architecture-and-layers.md`](docs/architecture-and-layers.md). Specs de feature: [`docs/specs/`](docs/specs/README.md). Kit Cursor: [`.cursor/RULES.md`](.cursor/RULES.md), [`.cursor/SPECS.md`](.cursor/SPECS.md).
+Short contract for **any** Node.js/TypeScript service that adopts this kit. Detail: [docs/architecture-and-layers.md](docs/architecture-and-layers.md). Cursor index: [`.cursor/RULES.md`](.cursor/RULES.md) · Claude Code index: [`.claude/README.md`](.claude/README.md).
 
----
+> Examples using the `user` context (`UserService`, `IUser`, …) are the kit’s **canonical pattern**. Illustrative files: [`examples/canonical-user/`](examples/canonical-user/). Replace `<context>` with the service’s real bounded context.
 
-## Project context
+## 1. Stack and commands
 
-Backend Node.js / TypeScript (Express + MongoDB). Pastas fixas: **`infraestructure`** (com “e”) e **`configuration`** (singular).
+| Item | Expected value |
+|------|----------------|
+| Runtime | Node.js + TypeScript |
+| HTTP | Express |
+| Persistence | MongoDB (Mongoose) |
+| Package manager | `yarn` |
+| Tests | Jest (`yarn test`, `yarn test:unit`, `yarn test:int`) |
+| Coverage | `yarn test:coverage` — target **≥ 80%** lines/branches |
+| Lint | `yarn lint` |
+| HTTP contract | `src/contracts/service.yaml` (OpenAPI) |
 
-**Use case** = método em `*Service` (ex.: `createUser`), não classe `*UseCase`.
+Adjust script names only when the service `package.json` already uses equivalents; do not invent another suite without need.
 
----
+## 2. Layers (summary)
 
-## Architecture (summary)
+| Layer | Folder | Responsibility |
+|-------|--------|----------------|
+| **Domain** | `src/domain/` | Business rules, entities, `I*` contracts |
+| **Application** | `src/application/` | Thin Express controllers |
+| **Infraestructure** | `src/infraestructure/` | Mongo `IM*`, adapters, concrete repos, clients, concrete Kafka |
+| **Configuration** | `src/configuration/` | Env, factories, composition/DI |
+| **Contracts** | `src/contracts/` | OpenAPI (`service.yaml`) |
+| **Tests** | `src/__tests__/` | Mirror by context (`*.int.test.ts` / `*.unit.test.ts`) |
 
-| Layer | Path | Responsibility |
-|-------|------|----------------|
-| Domain | `src/domain/<ctx>/` | Entities, `I*`, service, repo **contracts**, messaging interfaces |
-| Application | `src/application/controllers/` | Thin HTTP controllers |
-| Infraestructure | `src/infraestructure/` | Mongo `IM*`, adapters, repo **impl**, external services |
-| Configuration | `src/configuration/factory/` | DI / factories only |
-| Contracts | `src/contracts/service.yaml` | OpenAPI |
-| Tests | `src/__tests__/` | `*.unit.test.ts` / `*.int.test.ts` |
+Fixed spelling: **`infraestructure`** (with “e”), **`configuration`** (singular).
 
-**Golden rule:** Domain must not import Infraestructure (no Mongoose, `IM*`, concrete Kafka).
+## 3. Non-negotiable rules
 
-Business rules (uniqueness, 404/409, flows) live in **Service**. Repositories return `null` when not found; no product 404/409 in repos.
+1. **Domain ↛ Infraestructure** — no Mongoose, `IM*`, `*Model`, or concrete Kafka in domain.
+2. **Business rules in Service** — never in Repository or Controller. Entity = local invariants; Service = uniqueness, 404/409, flows, idempotency.
+3. **Repository** — CRUD/query + adapters; return `null` when missing; `try/catch` → `DATABASE_ERROR`. Do not throw product 404/409.
+4. **Controller** — extract `req`, call service, status/JSON, `handleTranslatedError`. No product rules and no `*Model`.
+5. **Factories** — composition in `src/configuration/factory/`.
+6. **OpenAPI** — every route/payload change updates `src/contracts/service.yaml`.
+7. **Commits/PRs** — no AI attribution (`Made with Cursor`, `Generated with Claude Code`, etc.). See `.cursor/rules/rule.git-no-ai-attribution.mdc` / `.claude/rules/git-no-ai-attribution.md`.
 
-Reference implementation: `src/domain/user/`, `src/application/controllers/user.controller.ts`, `src/infraestructure/repository/user/`, `src/configuration/factory/user.*.factory.ts`.
+## 4. Naming conventions
 
----
+| Prefix / form | Use |
+|---------------|-----|
+| `I*` | Domain interfaces (`IUser`, `IUserService`, `IUserRepositoryRead`) |
+| `IM*` | Mongo model (persisted), infraestructure only |
+| `E*` | Enums |
+| `*ServiceEntity` | Entity with local validation |
+| `kebab-case` + role suffix | Files: `user.service.ts`, `user.repository.read.ts` |
+| OpenAPI schemas | `NewUser`, `User`, `UpdateUser` — not generic `*Dto` |
 
-## Naming
+Use case = `*Service` method (e.g. `createUser`), not a separate `*UseCase` class.
 
-| Kind | Prefix / pattern | Example |
-|------|------------------|---------|
-| Domain interface | `I*` | `IUser`, `IUserRepositoryRead` |
-| Mongo model | `IM*` | `IMUser` |
-| Enum | `E*` string enum `KEY = 'KEY'` | `EUserStatus` |
-| Files | kebab + role | `user.service.ts`, `user.repository.read.ts` |
+## 5. Per-context structure
 
----
+```text
+src/domain/<context>/
+  entity/interfaces/<context>.interface.ts
+  entity/<context>.entity.ts
+  repository/<context>.repository.read.ts
+  repository/<context>.repository.write.ts
+  service/<context>.service.ts
+  service/<context>.service.interface.ts   # if the project already uses it
 
-## Commands
+src/infraestructure/
+  db/mongo/interfaces|schema|models/<context>.*
+  repository/<context>/adapters/<context>.adapter.ts
+  repository/<context>/<context>.repository.read.ts
+  repository/<context>/<context>.repository.write.ts
 
-| Task | Command |
-|------|---------|
-| Install | `yarn` |
-| Unit + integration | `yarn test` |
-| Coverage (≥ 80%) | `yarn test:coverage` |
-| Lint | `yarn lint` / `yarn lint:fix` |
-| Format | `yarn prettier` |
+src/application/controllers/<context>.controller.ts
+src/configuration/factory/<context>.service.factory.ts
+src/configuration/factory/<context>.controller.factory.ts
+```
 
----
+## 6. Spec-Driven (when applicable)
 
-## Non-negotiable rules
+Artifacts under `docs/specs/<feature-slug>/`:
 
-- Controllers: extract `req` → call service → status/JSON; `handleTranslatedError` + `ErrorCatalog`; no business rules / no `*Model`.
-- New/changed HTTP routes → update `src/contracts/service.yaml`.
-- Wire via factories; register controllers in bootstrap (`src/app.ts`) when needed.
-- Do not invent folder spellings (`infrastructure`, `configurations`).
-- Do not commit secrets (`.env`, credentials).
-- Do not add AI/IDE attribution to commits or PRs (`Made with Cursor`, `Generated with Cursor`, similar trailers) — [rule.git-no-ai-attribution.mdc](.cursor/rules/rule.git-no-ai-attribution.mdc).
-- Features: prefer Spec-Driven flow ([`.cursor/SPECS.md`](.cursor/SPECS.md)) — requirements approved before implement.
+- `requirements.md` → `design.md` → `tasks.md` → `test-plan.md` → code → `qa-report.md`
 
----
+Explicit human gate: `APPROVED` | `CHANGES_REQUESTED` | `REJECTED` | `BLOCKED`.
 
-## Spec-Driven (features)
+Full flow: [`.cursor/WORKFLOW.md`](.cursor/WORKFLOW.md) / [`.claude/WORKFLOW.md`](.claude/WORKFLOW.md). Default entry: **`agt-orchestrator`** (Cursor) / **`/orchestrate`** (Claude Code).
 
-1. `agt-product-owner` → `docs/specs/<slug>/requirements.md`
-2. **Human approves** requirements (explicit `APPROVED`)
-3. `agt-architecture` → `design.md` (+ `tasks.md` via `@skill-spec-driven`)
-4. `agt-quality-assurance` (PLAN) → `test-plan.md` before dev
-5. `agt-dev-backend` → implement against `tasks.md`
-6. `agt-test-runner` → suite healthy
-7. `agt-code-review` → spec ↔ code findings
-8. `agt-quality-assurance` (AUTOMATE + VERIFY) → `qa-report.md`
-9. Reviews + `agt-verifier`
-10. `agt-github-workflow` only if user asks for commit/PR
+## 7. Definition of Done (dev)
 
-Orchestrator: `agt-orchestrator`. Fluxo completo: [`.cursor/WORKFLOW.md`](.cursor/WORKFLOW.md). Skip SDD for trivial renames/typos.
+- [ ] Slice matches the approved spec (if any)
+- [ ] Domain has no infraestructure import
+- [ ] Rules in Service; repo/controller clean
+- [ ] `service.yaml` updated if HTTP changed
+- [ ] New controller registered in `src/app.ts` when needed
+- [ ] Relevant unit/int tests green
+- [ ] `yarn lint` ok on touched diff
+- [ ] Minimal diff — no lateral refactor
 
----
+## 8. Shared packages (org)
 
-## Definition of Done
-
-- Acceptance criteria met (and reflected in tests when behavior changed)
-- Relevant unit/integration tests green
-- `yarn lint` clean on touched code
-- OpenAPI updated when HTTP contract changed
-- Spec folder updated when the change was feature-scoped
-- No secrets in the diff
-
----
-
-## Messaging (Kafka) — when adding
-
-1. Interface in `src/domain/<ctx>/messaging/<event>/`
-2. Impl in `src/infraestructure/messaging/<event>/`
-3. Inject interface into service; wire in factory
-4. Follow [`skill-kafka-messaging`](.cursor/skills/skill-kafka-messaging/SKILL.md)
-
----
-
-## Agent entry points
-
-| Need | Agent / doc |
-|------|-------------|
-| End-to-end feature | `agt-orchestrator` |
-| Specs / PO / QA | [`.cursor/SPECS.md`](.cursor/SPECS.md) |
-| Technical design (`design.md`) | `agt-architecture` |
-| Test plan / QA report | `agt-quality-assurance` (PLAN / AUTOMATE / VERIFY) |
-| Spec ↔ code review | `agt-code-review` |
-| Quality / REST naming | [`.cursor/QUALITY.md`](.cursor/QUALITY.md) |
-| Commits / PR | [`.cursor/GITHUB.md`](.cursor/GITHUB.md) |
-| Jira | [`.cursor/JIRA.md`](.cursor/JIRA.md) |
+Org backends typically use shared packages for auth (`authorizeByGroup`), translated errors (`handleTranslatedError`), and helper types. If the service does not use those packages, preserve the **pattern** (auth middleware + i18n catalog + `IThrowedError` / `EErrorCode`) with the service’s equivalent libraries.

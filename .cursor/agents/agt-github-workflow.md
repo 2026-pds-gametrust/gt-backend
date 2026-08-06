@@ -1,8 +1,8 @@
 ---
 name: agt-github-workflow
 description: >-
-  Orquestra fluxo GitHub — commits convencionais (1 arquivo/commit) e criação
-  de PR com template do repositório.
+  Orchestrates the GitHub flow — conventional commits (1 file/commit) and PR
+  creation using the repository template.
 model: inherit
 readonly: false
 alwaysApply: false

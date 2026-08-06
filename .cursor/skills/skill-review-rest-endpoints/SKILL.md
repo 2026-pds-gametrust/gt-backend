@@ -1,8 +1,8 @@
 ---
 name: skill-review-rest-endpoints
 description: >-
-  Audits REST endpoint design against service.yaml and Express controllers in this
-  Node/TypeScript boilerplate. Use when reviewing routes, OpenAPI paths, HTTP verbs,
+  Audits REST endpoint design against service.yaml and Express controllers in
+  layered backend services. Use when reviewing routes, OpenAPI paths, HTTP verbs,
   query filters, or REST anti-patterns (/getUsers, action-in-path).
 disable-model-invocation: true
 ---

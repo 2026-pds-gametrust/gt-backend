@@ -1,6 +1,8 @@
-# Cursor rules — st-node-boilerplate
+# Cursor rules — layered backend
 
-Index of the project rules in [`rules/`](rules/). Source of truth for architecture: [AGENTS.md](../AGENTS.md) and [docs/architecture-and-layers.md](../docs/architecture-and-layers.md).
+Index of project rules in [`rules/`](rules/). Architecture source of truth: [AGENTS.md](../AGENTS.md) and [docs/architecture-and-layers.md](../docs/architecture-and-layers.md).
+
+This kit is maintained in **ai-backend-kit** and synced into each backend service. See [docs/ADOPTION.md](../docs/ADOPTION.md).
 
 ## Naming convention
 
@@ -23,7 +25,7 @@ See [meta.cursor-rules.mdc](rules/meta.cursor-rules.mdc) for the full convention
 | [rule.configuration.mdc](rules/rule.configuration.mdc) | Configuration — dotenv, env, composition factories |
 | [rule.contracts-openapi.mdc](rules/rule.contracts-openapi.mdc) | OpenAPI `service.yaml` aligned with the HTTP API |
 | [rule.semantic-quality.mdc](rules/rule.semantic-quality.mdc) | Semantic naming, REST paths, OpenAPI schemas |
-| [rule.tests.mdc](rules/rule.tests.mdc) | Jest tests — layer mirror, `*.int`/`*.unit`, coverage |
+| [rule.tests.mdc](rules/rule.tests.mdc) | Jest tests — `when`/`should`, mock policy, `*.int`/`*.unit`, coverage |
 | [rule.release.mdc](rules/rule.release.mdc) | Release via semantic-release (not Changesets) |
 | [rule.git-no-ai-attribution.mdc](rules/rule.git-no-ai-attribution.mdc) | Never add `Made with Cursor` / AI attribution to commits or PRs (`alwaysApply`) |
 
@@ -36,15 +38,28 @@ See [meta.cursor-rules.mdc](rules/meta.cursor-rules.mdc) for the full convention
 
 ## Orchestration
 
-Pedido amplo / feature ou bugfix end-to-end / encadear vários agents → **[`agt-orchestrator`](agents/agt-orchestrator.md)** (router fino: classifica, despacha, sintetiza; não implementa).
+Broad request / end-to-end feature or bugfix / chain several agents → **[`agt-orchestrator`](agents/agt-orchestrator.md)** (thin router: classifies, dispatches, synthesizes; does not implement).
 
-Pedido óbvio de um único especialista (só PR, só Jira, só review) → chamar o agent direto.
+Obvious single-specialist request (PR only, Jira only, review only) → call that agent directly.
 
 ## Spec-Driven toolkit
 
-Specs versionadas, PO, arquitetura (design), QA (PLAN/AUTOMATE/VERIFY) e code review: [SPECS.md](SPECS.md) · artefatos em [`docs/specs/`](../docs/specs/README.md) (`requirements`, `design`, `tasks`, `test-plan`, `qa-report`).
+Versioned specs, PO, architecture (design), QA (PLAN/VERIFY), test author, and code review: [SPECS.md](SPECS.md) · artifacts under [`docs/specs/`](../docs/specs/README.md) (`requirements`, `design`, `tasks`, `test-plan`, `qa-report`).
 
-Fluxo completo (idea → release gate): [WORKFLOW.md](WORKFLOW.md).
+Full flow (idea → release gate): [WORKFLOW.md](WORKFLOW.md).
+
+## Architecture discovery (agnostic)
+
+Map any repo as-is, mine patterns, steward Cursor rules (gated) — without
+assuming Clean/Hexagonal/MVC. Coexists with layered SDD agents:
+
+[ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md) ·
+`agt-architecture-probe` · `agt-pattern-miner` · `agt-pattern-steward` ·
+`skill-architecture-discovery`.
+
+## Skills index
+
+Scaffold, Spec-Driven, review, discovery, and ops skills: [SKILLS.md](SKILLS.md).
 
 ## Quality toolkit
 
@@ -52,8 +67,8 @@ Agents and skills for naming/REST/quality reviews: [QUALITY.md](QUALITY.md).
 
 ## GitHub toolkit
 
-Commits atômicos, Conventional Commits e criação de PR: [GITHUB.md](GITHUB.md).
+Atomic commits, Conventional Commits, and PR creation: [GITHUB.md](GITHUB.md).
 
 ## Jira toolkit
 
-Leitura e criação de issues no Jira Cloud: [JIRA.md](JIRA.md).
+Read and create issues in Jira Cloud: [JIRA.md](JIRA.md).

@@ -1,8 +1,8 @@
 ---
 name: agt-code-quality
 description: >-
-  Audits semantic naming, REST conventions, and light layer adherence in this
-  Node/TypeScript boilerplate. Use for PR review, pre-merge quality checks, or
+  Audits semantic naming, REST conventions, and light layer adherence in
+  layered backend services. Use for PR review, pre-merge quality checks, or
   when the user asks for code quality validation (not full architecture audit).
 model: inherit
 readonly: true

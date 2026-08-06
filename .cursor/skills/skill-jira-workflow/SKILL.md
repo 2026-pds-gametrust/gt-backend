@@ -1,14 +1,14 @@
 ---
 name: skill-jira-workflow
 description: >-
-  Jira Cloud workflow — leitura via MCP, criação via REST/curl com ADF,
-  histórias e subtasks no projeto SV.
+  Jira Cloud workflow — read via MCP, create via REST/curl with ADF, stories
+  and subtasks using org project defaults (SV).
 disable-model-invocation: true
 ---
 
 # Jira workflow (read + create)
 
-Reference skill for `agt-jira-workflow`. Use when reading or creating issues in Jira Cloud for the Sauvvitech team.
+Reference skill for `agt-jira-workflow`. Use when reading or creating issues in Jira Cloud for the organization.
 
 ## Sources of truth
 
@@ -20,7 +20,7 @@ Reference skill for `agt-jira-workflow`. Use when reading or creating issues in 
 
 | Setting | Value |
 |---------|-------|
-| Instance | `https://sauvvitech-team.atlassian.net` |
+| Instance | `https://your-org.atlassian.net` |
 | Project key | `SV` |
 | Story issuetype id | `10003` |
 | Subtask issuetype id | `10005` |
@@ -44,7 +44,7 @@ Load credentials from `~/.cursor/mcp.json` (server `jira-mcp` env block):
 
 | Env var | Purpose |
 |---------|---------|
-| `JIRA_INSTANCE_URL` | Base URL (`https://sauvvitech-team.atlassian.net`) |
+| `JIRA_INSTANCE_URL` | Base URL (`https://your-org.atlassian.net`) |
 | `JIRA_USER_EMAIL` | Account email |
 | `JIRA_API_KEY` | API token |
 
@@ -58,14 +58,14 @@ The configured MCP server `user-jira-mcp` exposes read-only tools. Call `GetMcpT
 
 | Tool | When to use | Example args |
 |------|-------------|--------------|
-| `get_issue` | Single issue by key or id | `{ "issueIdOrKey": "SV-1487" }` |
-| `jql_search` | List/search issues | `{ "jql": "parent = SV-1487", "maxResults": 50 }` |
+| `get_issue` | Single issue by key or id | `{ "issueIdOrKey": "PROJ-1487" }` |
+| `jql_search` | List/search issues | `{ "jql": "parent = PROJ-1487", "maxResults": 50 }` |
 
 ### Useful JQL
 
 | Goal | JQL |
 |------|-----|
-| Subtasks of a story | `parent = SV-1487` |
+| Subtasks of a story | `parent = PROJ-1487` |
 | Recent stories | `project = SV AND issuetype = Story ORDER BY created DESC` |
 | My open issues | `assignee = currentUser() AND status != Done` |
 | Issues in sprint | `project = SV AND sprint in openSprints()` |
@@ -96,14 +96,14 @@ curl -s -u "$JIRA_USER_EMAIL:$JIRA_API_KEY" \
 {
   "fields": {
     "project": { "key": "SV" },
-    "summary": "feat(scope) Título da história",
+    "summary": "feat(scope) Story title",
     "description": {
       "type": "doc",
       "version": 1,
       "content": [
         {
           "type": "paragraph",
-          "content": [{ "type": "text", "text": "Descrição da história." }]
+          "content": [{ "type": "text", "text": "Story description." }]
         }
       ]
     },
@@ -119,19 +119,19 @@ curl -s -u "$JIRA_USER_EMAIL:$JIRA_API_KEY" \
 {
   "fields": {
     "project": { "key": "SV" },
-    "summary": "feat(scope) Título da subtask",
+    "summary": "feat(scope) Subtask title",
     "description": {
       "type": "doc",
       "version": 1,
       "content": [
         {
           "type": "paragraph",
-          "content": [{ "type": "text", "text": "Descrição da subtask." }]
+          "content": [{ "type": "text", "text": "Subtask description." }]
         }
       ]
     },
     "issuetype": { "id": "10005" },
-    "parent": { "key": "SV-XXXX" },
+    "parent": { "key": "PROJ-XXXX" },
     "assignee": { "id": "<accountId>" }
   }
 }
@@ -154,7 +154,7 @@ API v3 does **not** accept Markdown in `description`. Use ADF.
   "content": [
     {
       "type": "paragraph",
-      "content": [{ "type": "text", "text": "Texto da descrição aqui." }]
+      "content": [{ "type": "text", "text": "Description text here." }]
     }
   ]
 }
@@ -171,11 +171,11 @@ One `paragraph` block per text block:
   "content": [
     {
       "type": "paragraph",
-      "content": [{ "type": "text", "text": "Primeiro parágrafo." }]
+      "content": [{ "type": "text", "text": "First paragraph." }]
     },
     {
       "type": "paragraph",
-      "content": [{ "type": "text", "text": "Segundo parágrafo." }]
+      "content": [{ "type": "text", "text": "Second paragraph." }]
     }
   ]
 }
@@ -186,7 +186,7 @@ One `paragraph` block per text block:
 ```json
 {
   "type": "text",
-  "text": "negrito",
+  "text": "bold",
   "marks": [{ "type": "strong" }]
 }
 ```
@@ -255,7 +255,7 @@ curl -s -u "$JIRA_USER_EMAIL:$JIRA_API_KEY" \
   -d @/tmp/jira-story.json | jq -r '.key'
 ```
 
-Issue URL pattern: `https://sauvvitech-team.atlassian.net/browse/<KEY>`
+Issue URL pattern: `https://your-org.atlassian.net/browse/<KEY>`
 
 ---
 
@@ -264,14 +264,14 @@ Issue URL pattern: `https://sauvvitech-team.atlassian.net/browse/<KEY>`
 Follow the project pattern for summaries:
 
 ```text
-feat(<scope>) <descrição curta>
+feat(<scope>) <short description>
 ```
 
 Examples:
 
 ```text
-feat(st-packages) Módulo de exportação CSV e PDF para relatórios tabulares
-feat(st-packages) Gerador CSV com escape RFC 4180 e BOM UTF-8
+feat(reports) CSV and PDF export module for tabular reports
+feat(reports) CSV generator with RFC 4180 escaping and UTF-8 BOM
 ```
 
 ---
@@ -282,9 +282,9 @@ Before creating issues, present a table:
 
 | Order | Type | Summary | Parent |
 |-------|------|---------|--------|
-| 1 | Story | `feat(st-packages) Módulo de exportação...` | — |
-| 2 | Subtask | `feat(st-packages) Gerador CSV...` | (story key) |
-| 3 | Subtask | `feat(st-packages) Gerador PDF...` | (story key) |
+| 1 | Story | `feat(reports) CSV and PDF export module...` | — |
+| 2 | Subtask | `feat(reports) CSV generator...` | (story key) |
+| 3 | Subtask | `feat(reports) PDF generator...` | (story key) |
 
 Ask for user approval unless they explicitly requested creation.
 
@@ -292,13 +292,13 @@ Ask for user approval unless they explicitly requested creation.
 
 ## Real reference example
 
-Story **SV-1487** with subtasks **SV-1488** through **SV-1493** — export module in `st-packages`, titles `feat(st-packages) ...`.
+Story **PROJ-1487** with subtasks **PROJ-1488** through **PROJ-1493** — export module in `reports`, titles `feat(reports) ...`.
 
 Creation flow used:
 
 1. `GET /myself` → accountId
-2. `POST /issue` → SV-1487 (Story)
-3. `POST /issue` × 6 → SV-1488…SV-1493 (Subtasks with `parent: { "key": "SV-1487" }`)
+2. `POST /issue` → PROJ-1487 (Story)
+3. `POST /issue` × 6 → PROJ-1488…PROJ-1493 (Subtasks with `parent: { "key": "PROJ-1487" }`)
 
 ---
 

@@ -12,4 +12,4 @@ alwaysApply: false
 - **Forbidden in service:** import `src/infraestructure`, `mongoose`, `*Model`, `IM*` models, concrete Kafka producers.
 - Services depend only on repository interfaces and domain types.
 - Detail and ❌/✅ examples: [rule.business-rules-layers.mdc](rule.business-rules-layers.mdc).
-- Messaging (optional scaffolding — no `messaging/` exists in `src/` yet): when added, keep **interfaces** only in `domain/<context>/messaging/<event>/` (e.g. `producer.interface.kafka.ts`); implementations go in infraestructure.
+- Messaging (optional): when added, keep **interfaces** only in `domain/<context>/messaging/<event>/` (e.g. `producer.interface.kafka.ts`); implementations go in infraestructure.

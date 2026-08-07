@@ -5,7 +5,7 @@ import { UserModel } from '../../../../infraestructure/db/mongo/models/user.mode
 import { ErrorCatalog } from '../../../../infraestructure/i18n/error-catalog';
 import { validUserMock } from '../../../__mocks__/user.mock';
 
-describe('When we try to get a user by id', () => {
+describe('when we get a user by id via HTTP', () => {
   it('should return the user when it exists', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);
@@ -17,7 +17,7 @@ describe('When we try to get a user by id', () => {
     expect(statusCode).toBe(200);
     expect(body).toMatchObject({
       id: userData.id,
-      name: userData.name,
+      fullName: userData.fullName,
       email: userData.email,
     });
   });

@@ -36,7 +36,7 @@ describe('when <context>', () => {
 
 - **Do not** mock the system under test.
 - **Do not** mock Repository Read/Write in a **Service** test — use factory + test Mongo (or an existing in-memory fake pattern).
-- **Do** use `jest.spyOn` for external services and Kafka producers/handlers.
+- **Do** use `jest.spyOn` for external services and SQS producers/handlers.
 - Avoid indiscriminate `jest.mock` of internal modules in the layer under test.
 
 ## Writing patterns

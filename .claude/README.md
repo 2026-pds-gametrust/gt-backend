@@ -119,7 +119,7 @@ Directory name = command. Skills marked **manual** have `disable-model-invocatio
 | [/new-context](skills/new-context/SKILL.md) | New bounded context end-to-end |
 | [/add-http-endpoint](skills/add-http-endpoint/SKILL.md) | New route in an existing context |
 | [/mongo-persistence](skills/mongo-persistence/SKILL.md) | `IM*`, adapter, Read/Write repos |
-| [/kafka-messaging](skills/kafka-messaging/SKILL.md) | Kafka producer/consumer (domain contract + infra) |
+| [/sqs-messaging](skills/sqs-messaging/SKILL.md) | SQS producer/consumer (domain contract + infra) |
 | [/domain-errors](skills/domain-errors/SKILL.md) | `EErrorCode`, catalog, translated HTTP errors |
 | [/openapi-contract](skills/openapi-contract/SKILL.md) | Keep `service.yaml` aligned |
 | [/tests-layered](skills/tests-layered/SKILL.md) | Jest unit/int layout; `when`/`should`; mock policy |

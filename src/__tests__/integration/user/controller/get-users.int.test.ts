@@ -4,7 +4,7 @@ import { app } from '../../../../../jest/setup-integration-tests';
 import { UserModel } from '../../../../infraestructure/db/mongo/models/user.model';
 import { validUserMock } from '../../../__mocks__/user.mock';
 
-describe('When we try to list all users', () => {
+describe('when we list all users via HTTP', () => {
   it('should return the list of users', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);

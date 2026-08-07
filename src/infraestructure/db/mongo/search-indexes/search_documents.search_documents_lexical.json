@@ -1,0 +1,38 @@
+{
+  "name": "search_documents_lexical",
+  "collectionName": "search_documents",
+  "type": "search",
+  "definition": {
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "searchText": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "title": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "brand": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "model": {
+          "type": "string",
+          "analyzer": "lucene.standard"
+        },
+        "categoryId": {
+          "type": "token"
+        },
+        "status": {
+          "type": "token"
+        },
+        "facets": {
+          "type": "document",
+          "dynamic": true
+        }
+      }
+    }
+  }
+}

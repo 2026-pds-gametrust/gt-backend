@@ -173,7 +173,7 @@ The repository uses layered architecture:
 - `src/domain`: entities, business services, interfaces, repository contracts,
   messaging contracts, and domain errors
 - `src/application`: Express controllers and HTTP boundary behavior
-- `src/infraestructure`: MongoDB, concrete repositories, adapters, Kafka
+- `src/infraestructure`: MongoDB, concrete repositories, adapters, SQS
   implementations, external clients, and error i18n
 - `src/configuration`: factories, dependency composition, and environment wiring
 - `src/contracts`: OpenAPI contract
@@ -191,14 +191,14 @@ Do not normalize or rename these paths.
 Core architectural assertions:
 
 1. Domain must not import concrete infrastructure, Mongoose models, `IM*` types,
-   or concrete Kafka implementations.
+   or concrete SQS implementations.
 2. Controllers must remain thin and delegate business behavior to domain services.
 3. Repositories may query and map data, but must not decide product errors or
    business rules.
 4. Adapters must map persistence and domain objects without product side effects.
 5. Factories compose dependencies and must not contain business rules.
 6. OpenAPI must remain synchronized with externally observable route or payload changes.
-7. Kafka contracts belong in Domain and concrete implementations belong in
+7. Messaging contracts belong in Domain and concrete implementations belong in
    Infraestructure.
 8. Domain services depend on interfaces, not concrete repositories.
 
@@ -267,7 +267,7 @@ skill / the `tests.md` rule.
 
 ### Contract / messaging / configuration
 
-- OpenAPI parity; Kafka emit / non-emit; factory graph smoke
+- OpenAPI parity; event emit / non-emit; factory graph smoke
 - Prefer `jest.spyOn` on injected producer/handler interfaces (via test author)
 
 ## Coverage

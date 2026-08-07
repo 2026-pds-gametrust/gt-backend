@@ -131,7 +131,7 @@ Avoid proving the same rule redundantly at every level.
 Verify:
 
 - No import from `src/infraestructure`
-- No Mongoose or concrete Kafka dependency
+- No Mongoose or concrete SQS messaging dependency
 - Business rules reside in service/entity
 - Repository and messaging dependencies are interfaces
 - Domain error behavior is explicit
@@ -158,7 +158,7 @@ Verify:
 - Adapter maps `IM*` and `I*` correctly
 - Adapter has no side effect
 - Mongo details do not leak to Domain/Application output
-- Kafka implementation satisfies the domain contract
+- SQS implementation satisfies the domain contract
 - No product-level 404/conflict/state rule is decided here
 
 ### Configuration
@@ -215,7 +215,7 @@ Authoring policy is defined in the `tests-layered` skill / `.claude/rules/tests.
 reviewing or planning, enforce:
 
 - Do **not** mock Repository in Service tests
-- Prefer `jest.spyOn` for external services and Kafka producers/handlers
+- Prefer `jest.spyOn` for external services and SQS producers/handlers
 - `__mocks__/` holds data fixtures, not Repository doubles
 - Do not mock the unit under test
 - Reset state between tests; avoid global mutable fixtures
@@ -233,7 +233,7 @@ For repository tests (authored by `agt-test-author`):
 - Test uniqueness/index behavior only when it is part of expected behavior
 - Avoid broad database cleanup against shared environments
 
-## Kafka guidance
+## SQS guidance
 
 Prefer validation with injected producer or consumer interfaces and `jest.spyOn`.
 

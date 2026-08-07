@@ -1,10 +1,10 @@
-import { UserRepositoryRead } from '../../../../../infraestructure/repository/user/user.repository.read';
+import { UserRepositoryRead } from '../../../../../infraestructure/repository/identity/user.repository.read';
 import { UserModel } from '../../../../../infraestructure/db/mongo/models/user.model';
 import { validUserMock } from '../../../../__mocks__/user.mock';
 
 const repositoryRead = new UserRepositoryRead();
 
-describe('When we try to find a user by email', () => {
+describe('when we find a user by email via repository', () => {
   it('should return the user when the email exists', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);
@@ -13,7 +13,7 @@ describe('When we try to find a user by email', () => {
 
     expect(found).toMatchObject({
       email: userData.email,
-      name: userData.name,
+      fullName: userData.fullName,
     });
   });
 

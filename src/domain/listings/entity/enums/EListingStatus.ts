@@ -1,0 +1,9 @@
+export enum EListingStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  PUBLISHED = 'PUBLISHED',
+  PAUSED = 'PAUSED',
+  EXPIRED = 'EXPIRED',
+  RESERVED = 'RESERVED',
+  SOLD = 'SOLD',
+}

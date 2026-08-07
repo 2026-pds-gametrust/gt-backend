@@ -1,6 +1,6 @@
 # AGENTS.md — layered backend contract
 
-Short contract for **any** Node.js/TypeScript service that adopts this kit. Detail: [docs/architecture-and-layers.md](docs/architecture-and-layers.md). Cursor index: [`.cursor/RULES.md`](.cursor/RULES.md) · Claude Code index: [`.claude/README.md`](.claude/README.md).
+Short contract for **any** Node.js/TypeScript service that adopts this kit. Detail: [docs/architecture-and-layers.md](docs/architecture-and-layers.md). Service-specific architecture canon (modules, messaging, consistency, security): [docs/architecture/](docs/architecture/00-overview.md). Cursor index: [`.cursor/RULES.md`](.cursor/RULES.md) · Claude Code index: [`.claude/README.md`](.claude/README.md).
 
 > Examples using the `user` context (`UserService`, `IUser`, …) are the kit’s **canonical pattern**. Illustrative files: [`examples/canonical-user/`](examples/canonical-user/). Replace `<context>` with the service’s real bounded context.
 
@@ -11,6 +11,7 @@ Short contract for **any** Node.js/TypeScript service that adopts this kit. Deta
 | Runtime | Node.js + TypeScript |
 | HTTP | Express |
 | Persistence | MongoDB (Mongoose) |
+| Messaging | AWS SQS/SNS (events) |
 | Package manager | `yarn` |
 | Tests | Jest (`yarn test`, `yarn test:unit`, `yarn test:int`) |
 | Coverage | `yarn test:coverage` — target **≥ 80%** lines/branches |
@@ -25,7 +26,7 @@ Adjust script names only when the service `package.json` already uses equivalent
 |-------|--------|----------------|
 | **Domain** | `src/domain/` | Business rules, entities, `I*` contracts |
 | **Application** | `src/application/` | Thin Express controllers |
-| **Infraestructure** | `src/infraestructure/` | Mongo `IM*`, adapters, concrete repos, clients, concrete Kafka |
+| **Infraestructure** | `src/infraestructure/` | Mongo `IM*`, adapters, concrete repos, clients, concrete SQS messaging |
 | **Configuration** | `src/configuration/` | Env, factories, composition/DI |
 | **Contracts** | `src/contracts/` | OpenAPI (`service.yaml`) |
 | **Tests** | `src/__tests__/` | Mirror by context (`*.int.test.ts` / `*.unit.test.ts`) |
@@ -34,7 +35,7 @@ Fixed spelling: **`infraestructure`** (with “e”), **`configuration`** (singu
 
 ## 3. Non-negotiable rules
 
-1. **Domain ↛ Infraestructure** — no Mongoose, `IM*`, `*Model`, or concrete Kafka in domain.
+1. **Domain ↛ Infraestructure** — no Mongoose, `IM*`, `*Model`, or concrete messaging (SQS) in domain.
 2. **Business rules in Service** — never in Repository or Controller. Entity = local invariants; Service = uniqueness, 404/409, flows, idempotency.
 3. **Repository** — CRUD/query + adapters; return `null` when missing; `try/catch` → `DATABASE_ERROR`. Do not throw product 404/409.
 4. **Controller** — extract `req`, call service, status/JSON, `handleTranslatedError`. No product rules and no `*Model`.
@@ -66,11 +67,14 @@ src/domain/<context>/
   service/<context>.service.ts
   service/<context>.service.interface.ts   # if the project already uses it
 
+src/domain/<context>/messaging/<event>/producer.interface.ts   # when events exist
+
 src/infraestructure/
   db/mongo/interfaces|schema|models/<context>.*
   repository/<context>/adapters/<context>.adapter.ts
   repository/<context>/<context>.repository.read.ts
   repository/<context>/<context>.repository.write.ts
+  messaging/<event>/producer.sqs.ts | consumer.sqs.ts          # when events exist
 
 src/application/controllers/<context>.controller.ts
 src/configuration/factory/<context>.service.factory.ts

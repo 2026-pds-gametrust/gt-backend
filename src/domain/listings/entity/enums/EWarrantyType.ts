@@ -1,0 +1,5 @@
+export enum EWarrantyType {
+  NONE = 'NONE',
+  SELLER = 'SELLER',
+  MANUFACTURER_REMAINING = 'MANUFACTURER_REMAINING',
+}

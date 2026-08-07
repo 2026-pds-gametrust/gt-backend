@@ -1,0 +1,6 @@
+export enum ESealStatus {
+  GRANTED = 'GRANTED',
+  SUSPENDED = 'SUSPENDED',
+  EXPIRED = 'EXPIRED',
+  REVOKED = 'REVOKED',
+}

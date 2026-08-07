@@ -4,12 +4,12 @@ import { validUserMock } from '../../../__mocks__/user.mock';
 
 const userService = UserServiceFactory.create();
 
-describe('When we try to list users', () => {
+describe('when we list users', () => {
   it('should return users matching the provided filter', async () => {
-    const userData = validUserMock({ name: 'Filtered User' });
+    const userData = validUserMock({ fullName: 'Filtered User' });
     await UserModel.create(userData);
 
-    const result = await userService.listUsers({ name: 'Filtered User' });
+    const result = await userService.listUsers({ fullName: 'Filtered User' });
 
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result.some((u) => u.email === userData.email)).toBe(true);

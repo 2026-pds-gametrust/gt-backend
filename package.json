@@ -18,7 +18,7 @@
     "test:int": "NODE_ENV=test NEW_RELIC_ENABLED=false NEW_RELIC_NO_CONFIG_FILE=true NEW_RELIC_LOG_LEVEL=error jest --runInBand --forceExit --config ./jest/jest.int-config.ts --detectOpenHandles",
     "test:component": "jest --runInBand --config ./jest/jest.component-config.ts --detectOpenHandles",
     "test:mutation": "npx stryker run",
-    "test:coverage": "jest --coverage --runInBand --forceExit --config ./jest/jest.int-config.ts --detectOpenHandles && jest --coverage --runInBand --forceExit --config ./jest/jest.config.ts --detectOpenHandles"
+    "test:coverage": "NODE_ENV=test NEW_RELIC_ENABLED=false NEW_RELIC_NO_CONFIG_FILE=true NEW_RELIC_LOG_LEVEL=error jest --coverage --runInBand --forceExit --config ./jest/jest.coverage-config.ts --detectOpenHandles"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -33,6 +33,7 @@
     "@types/supertest": "^6.0.2",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-boundaries": "^7.1.0",
     "eslint-plugin-prettier": "^5.2.3",
     "globals": "^15.12.0",
     "husky": "^9.1.7",
@@ -51,6 +52,8 @@
   "license": "ISC",
   "repository": "git@github.com:whitebeardit/node-boilerplate.git",
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.1105.0",
+    "@aws-sdk/client-sqs": "^3.1105.0",
     "@sauvvitech/st-packages": "^3.9.0",
     "dotenv": "^16.4.7",
     "express": "^4.19.2",

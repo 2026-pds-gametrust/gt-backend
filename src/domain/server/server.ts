@@ -54,7 +54,10 @@ export class Server {
       res.status(200).json({ status: 'OK' });
     });
 
-    this.middlewares(this.middleWaresToStart);
+    this.middlewares([
+      ...this.middleWaresToStart,
+      ...(appInit.middlewaresToStart || []),
+    ]);
 
     this.routes(appInit.controllers || []);
 

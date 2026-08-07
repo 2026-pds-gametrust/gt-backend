@@ -1,10 +1,10 @@
-import { UserRepositoryWrite } from '../../../../../infraestructure/repository/user/user.repository.write';
+import { UserRepositoryWrite } from '../../../../../infraestructure/repository/identity/user.repository.write';
 import { UserModel } from '../../../../../infraestructure/db/mongo/models/user.model';
 import { validUserMock } from '../../../../__mocks__/user.mock';
 
 const repositoryWrite = new UserRepositoryWrite();
 
-describe('When we try to delete a user by id', () => {
+describe('when we delete a user by id via repository', () => {
   it('should return the deleted user', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);

@@ -64,7 +64,7 @@ May contain:
 - entities
 - service contracts
 - read/write repository contracts
-- messaging/Kafka contracts
+- messaging contracts
 
 Must not import:
 
@@ -72,7 +72,7 @@ Must not import:
 - `IM*` models
 - Mongo schemas
 - concrete HTTP clients
-- concrete Kafka producers/consumers
+- concrete SQS producers/consumers
 - files from `infraestructure`
 
 Golden rule: **Domain must not depend on Infraestructure**.
@@ -107,7 +107,7 @@ May contain:
 - `dbToInternal` / `internalToDb` adapters
 - repository implementations
 - external clients
-- concrete Kafka producers/consumers
+- concrete SQS producers/consumers
 - error catalog/i18n
 
 Repositories must:
@@ -161,7 +161,7 @@ For a new backend feature, follow this order:
    - entity
    - repository contracts
    - service contract
-   - Kafka contracts, if there is an event
+   - Messaging contracts, if there is an event
 2. **Infraestructure**
    - `IM*`
    - schema
@@ -229,20 +229,20 @@ src/configuration/factory/<context>.controller.factory.ts
 - Repository converts using adapter.
 - Controller and service must never depend on `IM*`.
 
-## Kafka/messaging rules
+## SQS/messaging rules
 
 When adding an event:
 
 1. Create interface in domain:
 
 ```txt
-src/domain/<context>/messaging/<event>/producer.interface.kafka.ts
+src/domain/<context>/messaging/<event>/producer.interface.ts
 ```
 
 2. Create concrete implementation in infra:
 
 ```txt
-src/infraestructure/messaging/<event>/producer.kafka.ts
+src/infraestructure/messaging/<event>/producer.sqs.ts
 ```
 
 3. Inject via factory.

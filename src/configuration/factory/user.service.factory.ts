@@ -1,15 +1,14 @@
-import { UserService } from '../../domain/user/service/user.service';
-import { UserRepositoryRead } from '../../infraestructure/repository/user/user.repository.read';
-import { UserRepositoryWrite } from '../../infraestructure/repository/user/user.repository.write';
+import { UserService } from '../../domain/identity/service/user.service';
+import { UserRepositoryRead } from '../../infraestructure/repository/identity/user.repository.read';
+import { UserRepositoryWrite } from '../../infraestructure/repository/identity/user.repository.write';
+import { EventPublisherFactory } from './messaging/event-publisher.factory';
 
 export class UserServiceFactory {
   static create() {
-    const repoRead = new UserRepositoryRead();
-    const repoWrite = new UserRepositoryWrite();
-
     return new UserService({
-      userRepositoryRead: repoRead,
-      userRepositoryWrite: repoWrite,
+      userRepositoryRead: new UserRepositoryRead(),
+      userRepositoryWrite: new UserRepositoryWrite(),
+      eventPublisher: EventPublisherFactory.create(),
     });
   }
 }

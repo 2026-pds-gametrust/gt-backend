@@ -5,7 +5,7 @@ import { UserModel } from '../../../../infraestructure/db/mongo/models/user.mode
 import { ErrorCatalog } from '../../../../infraestructure/i18n/error-catalog';
 import { validUserMock } from '../../../__mocks__/user.mock';
 
-describe('When we try to delete a user', () => {
+describe('when we delete a user via HTTP', () => {
   it('should return success when the user exists', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);

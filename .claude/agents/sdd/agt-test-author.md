@@ -4,7 +4,7 @@ description: >-
   Dedicated Jest test author for this Node.js/TypeScript repo. Creates and extends
   unit and integration tests under src/__tests__/ with mandatory when/should naming,
   explicit scenario coverage, and a strict mock policy (no Repository mocks in
-  service tests; jest.spyOn for external services and Kafka). Never changes
+  service tests; jest.spyOn for external services and SQS). Never changes
   production code to make tests pass.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: inherit
@@ -152,7 +152,7 @@ Rules:
 ### Required / preferred — use `jest.spyOn`
 
 - External services (HTTP clients, SDKs, email, third-party APIs)
-- Kafka producers / handlers (injected interface): spy on `produce` / handler methods
+- event producers / handlers (injected interface): spy on `produce` / handler methods
 - Clock / UUID only when the assertion depends on a fixed value
 
 Example shape:
@@ -233,5 +233,5 @@ Recommended next owner:
 - Never modify production code to make tests pass.
 - Always use `describe('when …')` / `it('should …')` for new tests.
 - Never mock Repository in Service tests.
-- Prefer `jest.spyOn` for external services and Kafka.
+- Prefer `jest.spyOn` for external services and SQS.
 - Never invent conflicting product expectations when requirements are ambiguous — mark `BLOCKED` and ask PO/QA.

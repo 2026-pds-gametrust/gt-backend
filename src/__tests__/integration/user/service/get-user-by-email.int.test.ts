@@ -6,7 +6,7 @@ import { validUserMock } from '../../../__mocks__/user.mock';
 
 const userService = UserServiceFactory.create();
 
-describe('When we try to get a user by email', () => {
+describe('when we get a user by email', () => {
   it('should return the user when the email exists', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);
@@ -15,7 +15,7 @@ describe('When we try to get a user by email', () => {
 
     expect(result).toMatchObject({
       email: userData.email,
-      name: userData.name,
+      fullName: userData.fullName,
     });
   });
 

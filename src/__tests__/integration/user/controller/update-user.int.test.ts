@@ -5,17 +5,17 @@ import { UserModel } from '../../../../infraestructure/db/mongo/models/user.mode
 import { ErrorCatalog } from '../../../../infraestructure/i18n/error-catalog';
 import { validUserMock } from '../../../__mocks__/user.mock';
 
-describe('When we try to update a user', () => {
+describe('when we update a user via HTTP', () => {
   it('should return the updated user', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);
 
     const { body, statusCode } = await supertest(app.app)
       .put(`/users/${userData.id}`)
-      .send({ name: 'Updated Name' });
+      .send({ fullName: 'Updated Name' });
 
     expect(statusCode).toBe(200);
-    expect(body.name).toBe('Updated Name');
+    expect(body.fullName).toBe('Updated Name');
     expect(body.email).toBe(userData.email);
     expect(body.id).toBe(userData.id);
   });
@@ -23,7 +23,7 @@ describe('When we try to update a user', () => {
   it('should return 404 when the user does not exist', async () => {
     const { body, statusCode } = await supertest(app.app)
       .put('/users/nonexistent-id')
-      .send({ name: 'Updated' });
+      .send({ fullName: 'Updated' });
 
     expect(statusCode).toBe(404);
     expect(body).toMatchObject({

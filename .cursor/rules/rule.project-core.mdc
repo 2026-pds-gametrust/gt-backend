@@ -6,7 +6,7 @@ alwaysApply: true
 
 - Source of truth: [AGENTS.md](AGENTS.md) and [docs/architecture-and-layers.md](docs/architecture-and-layers.md).
 - Fixed folders: **`infraestructure`** (with "e"), **`configuration`** (singular) — do not rename to "infrastructure" / "configurations".
-- **Domain** must not import **Infraestructure** (no Mongoose, `IM*`, concrete Kafka in domain).
+- **Domain** must not import **Infraestructure** (no Mongoose, `IM*`, concrete SQS messaging in domain).
 - Repository contracts in domain (`I*RepositoryRead` / `I*RepositoryWrite`); implementations in `src/infraestructure/repository/<context>/`.
 - Composition and DI in `src/configuration/factory/`.
 - Tests in `src/__tests__/`; coverage target ≥ 80% (`yarn test:coverage` in AGENTS.md).

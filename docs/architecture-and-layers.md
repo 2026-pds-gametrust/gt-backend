@@ -1,6 +1,6 @@
 # Architecture and layers
 
-Reference document for **any backend service** that adopts the kit in [ai-backend-kit](../README.md). Complements [AGENTS.md](../AGENTS.md).
+Reference document for **any backend service** that adopts the kit in [ai-backend-kit](../README.md). Complements [AGENTS.md](../AGENTS.md). Service-specific architecture rules (modules, messaging, consistency, security) live in [docs/architecture/](architecture/00-overview.md).
 
 > The `user` context appears in examples as the **canonical pattern**. Illustrative files: [`examples/canonical-user/`](../examples/canonical-user/). In each service, replace it with the real `<context>` (`order`, `payment`, `catalog`, …).
 
@@ -20,7 +20,7 @@ Standardize a Node.js/TypeScript backend with:
 src/
   domain/            # rules + contracts
   application/       # HTTP (Express)
-  infraestructure/   # Mongo, adapters, concrete repos, clients, concrete Kafka
+  infraestructure/   # Mongo, adapters, concrete repos, clients, concrete messaging (SQS)
   configuration/     # env + factories (DI)
   contracts/         # OpenAPI (service.yaml)
   app.ts             # bootstrap
@@ -38,7 +38,7 @@ __tests__/           # under src/__tests__/ — mirror by layer/context
 - Entities (`*ServiceEntity`) with **local** validation
 - Repository contracts `I*RepositoryRead` / `I*RepositoryWrite`
 - Service contracts (`I*Service`) when the project uses them
-- Messaging contracts (Kafka interfaces), when events exist
+- Messaging contracts (transport-neutral producer interfaces), when events exist
 
 ### Must not contain
 
@@ -96,7 +96,7 @@ try {
 - Pure adapters `dbToInternal` / `internalToDb`
 - Implementations of `I*RepositoryRead` / `I*RepositoryWrite`
 - External HTTP clients
-- Concrete Kafka producers/consumers
+- Concrete SQS producers/consumers
 - Error i18n catalog (`ErrorCatalog`)
 
 ### Repository — allowed
@@ -163,11 +163,13 @@ Product errors originate in the **service** (`IThrowedError` + `EErrorCode`); th
 
 When the service has events:
 
-1. Interface in domain: `src/domain/<context>/messaging/<event>/producer.interface.kafka.ts`
-2. Implementation in infra: `src/infraestructure/messaging/<event>/producer.kafka.ts`
-3. Inject via factory
+1. Interface in domain: `src/domain/<context>/messaging/<event>/producer.interface.ts` (transport-neutral)
+2. Implementation in infra: `src/infraestructure/messaging/<event>/producer.sqs.ts` (and `consumer.sqs.ts`)
+3. Inject via factory (`src/configuration/factory/messaging/`)
 4. Service calls the **interface** after success
 5. Idempotency when applicable
+
+GamerTrust transport standard (topology, DLQ, local dev): [docs/architecture/05-sqs-messaging.md](architecture/05-sqs-messaging.md).
 
 ## 11. Tests
 

@@ -117,7 +117,7 @@ owner: dev via design). Both can coexist on the same code.
 - Factory contains business conditions?
 - `IM*` leaked into Domain or Application?
 - External contract (`service.yaml`) updated?
-- Kafka contract in Domain, implementation in Infraestructure?
+- Messaging (SQS) contract in Domain, implementation in Infraestructure?
 - Code testable? Rules duplicated?
 - Error flow consistent?
 - Scope expanded beyond the spec?

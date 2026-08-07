@@ -44,7 +44,7 @@ Deepen partial flows without repeating this guide:
 | [skill-domain-errors](../skill-domain-errors/SKILL.md) | `EErrorCode`, `IThrowedError`, `ErrorCatalog`, `handleTranslatedError` |
 | [skill-tests-layered](../skill-tests-layered/SKILL.md) | Integration/unit tests per layer |
 | [skill-mongo-persistence](../skill-mongo-persistence/SKILL.md) | `IM*`, adapter, Read/Write repositories |
-| [skill-kafka-messaging](../skill-kafka-messaging/SKILL.md) | Kafka producer/consumer |
+| [skill-sqs-messaging](../skill-sqs-messaging/SKILL.md) | SQS producer/consumer |
 
 ## Final checklist
 

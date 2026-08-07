@@ -6,7 +6,7 @@ import { validUserMock } from '../../../__mocks__/user.mock';
 
 const userService = UserServiceFactory.create();
 
-describe('When we try to create a user', () => {
+describe('when we create a user', () => {
   it('should return the created user when the email does not exist', async () => {
     const user = validUserMock();
 
@@ -14,8 +14,9 @@ describe('When we try to create a user', () => {
 
     expect(result).toMatchObject({
       id: user.id,
-      name: user.name,
+      fullName: user.fullName,
       email: user.email,
+      cpf: user.cpf,
     });
     expect(result.createdAt).toBeDefined();
   });

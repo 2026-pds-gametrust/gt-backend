@@ -1,25 +1,25 @@
-import { UserRepositoryWrite } from '../../../../../infraestructure/repository/user/user.repository.write';
+import { UserRepositoryWrite } from '../../../../../infraestructure/repository/identity/user.repository.write';
 import { UserModel } from '../../../../../infraestructure/db/mongo/models/user.model';
 import { validUserMock } from '../../../../__mocks__/user.mock';
 
 const repositoryWrite = new UserRepositoryWrite();
 
-describe('When we try to update a user by id', () => {
+describe('when we update a user by id via repository', () => {
   it('should return the updated user', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);
 
     const updated = await repositoryWrite.updateUserById(userData.id, {
-      name: 'Updated Name',
+      fullName: 'Updated Name',
     });
 
-    expect(updated?.name).toBe('Updated Name');
+    expect(updated?.fullName).toBe('Updated Name');
     expect(updated?.email).toBe(userData.email);
   });
 
   it('should return null when the user does not exist', async () => {
     const updated = await repositoryWrite.updateUserById('nonexistent', {
-      name: 'Updated',
+      fullName: 'Updated',
     });
     expect(updated).toBeNull();
   });

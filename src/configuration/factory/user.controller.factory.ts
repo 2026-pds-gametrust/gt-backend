@@ -1,9 +1,9 @@
-import { UserController } from '../../application/controllers/user.controller';
+import { IdentityControllerFactory } from './identity.controller.factory';
 import { IController } from '../../domain/server/interfaces/IController';
-import { UserServiceFactory } from './user.service.factory';
 
+/** @deprecated Prefer IdentityControllerFactory — kept for compatibility. */
 export class UserControllerFactory {
   static create(): IController {
-    return new UserController(UserServiceFactory.create());
+    return IdentityControllerFactory.create();
   }
 }

@@ -100,7 +100,7 @@ Cover, at minimum:
 - Affected layers (Domain / Application / Infraestructure / Configuration / Contracts)
 - Data ownership
 - Internal contracts (`I*` interfaces, repository contracts, messaging contracts)
-- External contracts (OpenAPI `service.yaml`, Kafka events)
+- External contracts (OpenAPI `service.yaml`, SQS events)
 - Persistence and schema changes (`IM*`, adapters)
 - Backward compatibility of existing records and consumers
 - Idempotency and concurrency
@@ -115,16 +115,16 @@ Apply the repository architecture:
 
 | Concern | Layer |
 |---------|-------|
-| Entities, `I*`, business rules, services, repository contracts, Kafka contracts, domain errors | Domain (`src/domain`) |
+| Entities, `I*`, business rules, services, repository contracts, messaging contracts, domain errors | Domain (`src/domain`) |
 | Controllers, `req`/`res`, middlewares, HTTP error translation | Application (`src/application`) |
-| Mongo schema/model, `IM*`, concrete repositories, adapters, concrete Kafka, HTTP clients | Infraestructure (`src/infraestructure`) |
+| Mongo schema/model, `IM*`, concrete repositories, adapters, concrete SQS messaging, HTTP clients | Infraestructure (`src/infraestructure`) |
 | Factories, dependency composition | Configuration (`src/configuration`) |
 | OpenAPI | Contracts (`src/contracts/service.yaml`) |
 | Automated tests | `src/__tests__` |
 
 Never design:
 
-- Domain importing Infraestructure (no Mongoose, `IM*`, concrete Kafka)
+- Domain importing Infraestructure (no Mongoose, `IM*`, concrete SQS messaging)
 - Business rules in controller, repository, adapter, or factory
 - Repositories throwing product 404/409 (return `null`; service decides)
 - Renames of `infraestructure` / `configuration` folders

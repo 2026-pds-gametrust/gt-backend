@@ -22,7 +22,7 @@ Canonical code shapes: [`examples/canonical-user/`](../examples/canonical-user/)
 | [skill-new-context](skills/skill-new-context/SKILL.md) | New bounded context end-to-end |
 | [skill-add-http-endpoint](skills/skill-add-http-endpoint/SKILL.md) | New route in an existing context |
 | [skill-mongo-persistence](skills/skill-mongo-persistence/SKILL.md) | `IM*`, adapter, Read/Write repos |
-| [skill-kafka-messaging](skills/skill-kafka-messaging/SKILL.md) | Kafka producer/consumer (domain contract + infra) |
+| [skill-sqs-messaging](skills/skill-sqs-messaging/SKILL.md) | SQS producer/consumer (domain contract + infra) |
 | [skill-domain-errors](skills/skill-domain-errors/SKILL.md) | `EErrorCode`, catalog, translated HTTP errors |
 | [skill-openapi-contract](skills/skill-openapi-contract/SKILL.md) | Keep `service.yaml` aligned |
 | [skill-tests-layered](skills/skill-tests-layered/SKILL.md) | Jest unit/int layout; `when`/`should`; mock policy (`agt-test-author`) |

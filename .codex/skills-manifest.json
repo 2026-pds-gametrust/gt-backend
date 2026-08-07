@@ -8,7 +8,7 @@
     "ai-backend-kit-domain-errors",
     "ai-backend-kit-github-workflow",
     "ai-backend-kit-jira-workflow",
-    "ai-backend-kit-kafka-messaging",
+    "ai-backend-kit-sqs-messaging",
     "ai-backend-kit-mongo-persistence",
     "ai-backend-kit-new-context",
     "ai-backend-kit-openapi-contract",

@@ -6,23 +6,23 @@ import { validUserMock } from '../../../__mocks__/user.mock';
 
 const userService = UserServiceFactory.create();
 
-describe('When we try to update a user by id', () => {
+describe('when we update a user by id', () => {
   it('should return the updated user when it exists', async () => {
     const userData = validUserMock();
     await UserModel.create(userData);
 
     const result = await userService.updateUserById(userData.id, {
-      userData: { name: 'Updated Name' },
+      userData: { fullName: 'Updated Name' },
     });
 
-    expect(result?.name).toBe('Updated Name');
+    expect(result?.fullName).toBe('Updated Name');
     expect(result?.email).toBe(userData.email);
   });
 
   it('should reject with RESOURCE_NOT_FOUND when the user does not exist', async () => {
     await expect(
       userService.updateUserById('nonexistent', {
-        userData: { name: 'Updated' },
+        userData: { fullName: 'Updated' },
       }),
     ).rejects.toMatchObject({
       status: 404,

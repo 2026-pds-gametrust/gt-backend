@@ -12,6 +12,8 @@ import { ICategoryRepositoryRead } from '../repository/category.repository.read'
 import { IPriceHistoryRepositoryWrite } from '../repository/price-history.repository.write';
 import { IProductRepositoryRead } from '../repository/product.repository.read';
 import { IProductRepositoryWrite } from '../repository/product.repository.write';
+import { IMediaClient } from '../../media/client/media.client';
+import { EMediaPurpose } from '../../media/entity/enums/EMediaPurpose';
 import {
   IParamsCreateProduct,
   IParamsProductService,
@@ -25,6 +27,7 @@ export class ProductService implements IProductService {
   private readonly categoryRepositoryRead: ICategoryRepositoryRead;
   private readonly priceHistoryRepositoryWrite: IPriceHistoryRepositoryWrite;
   private readonly eventPublisher: IEventPublisher;
+  private readonly mediaClient?: IMediaClient;
 
   constructor({
     productRepositoryRead,
@@ -32,16 +35,23 @@ export class ProductService implements IProductService {
     categoryRepositoryRead,
     priceHistoryRepositoryWrite,
     eventPublisher,
+    mediaClient,
   }: IParamsProductService) {
     this.productRepositoryRead = productRepositoryRead;
     this.productRepositoryWrite = productRepositoryWrite;
     this.categoryRepositoryRead = categoryRepositoryRead;
     this.priceHistoryRepositoryWrite = priceHistoryRepositoryWrite;
     this.eventPublisher = eventPublisher;
+    this.mediaClient = mediaClient;
   }
 
   async createProduct(params: IParamsCreateProduct): Promise<IProduct> {
     await this.assertCategoryExists(params.categoryId);
+    const images = await this.resolveProductImages(
+      params.id,
+      params.imageAssetIds,
+      params.imageUrls,
+    );
 
     const entity = new ProductServiceEntity({
       id: params.id,
@@ -54,7 +64,8 @@ export class ProductService implements IProductService {
       ean: params.ean,
       sku: params.sku,
       specs: params.specs,
-      imageUrls: params.imageUrls,
+      imageUrls: images.imageUrls,
+      imageAssetIds: images.imageAssetIds,
       referencePriceCents: params.referencePriceCents,
       currency: params.currency,
       status: params.status ?? EProductStatus.ACTIVE,
@@ -112,9 +123,19 @@ export class ProductService implements IProductService {
     params: IParamsUpdateProduct,
   ): Promise<IProduct> {
     const existing = await this.getProductById(id);
+    const productData = { ...params.productData };
+    if (productData.imageAssetIds) {
+      const images = await this.resolveProductImages(
+        id,
+        productData.imageAssetIds,
+        productData.imageUrls ?? existing.imageUrls,
+      );
+      productData.imageUrls = images.imageUrls;
+      productData.imageAssetIds = images.imageAssetIds;
+    }
     const candidate = new ProductServiceEntity({
       ...existing,
-      ...params.productData,
+      ...productData,
       slug: existing.slug,
       categoryId: existing.categoryId,
     });
@@ -135,6 +156,7 @@ export class ProductService implements IProductService {
       sku: candidate.sku,
       specs: candidate.specs,
       imageUrls: candidate.imageUrls,
+      imageAssetIds: candidate.imageAssetIds,
       referencePriceCents: candidate.referencePriceCents,
       currency: candidate.currency,
       status: candidate.status,
@@ -214,6 +236,29 @@ export class ProductService implements IProductService {
         details: { slug },
       } as IThrowedError;
     }
+  }
+
+  private async resolveProductImages(
+    productId: string,
+    imageAssetIds?: string[],
+    fallbackUrls?: string[],
+  ): Promise<{ imageUrls?: string[]; imageAssetIds?: string[] }> {
+    if (!this.mediaClient || !imageAssetIds?.length) {
+      return { imageUrls: fallbackUrls, imageAssetIds };
+    }
+    const imageUrls: string[] = [];
+    for (const assetId of imageAssetIds) {
+      await this.mediaClient.assertAttachableAsset({
+        assetId,
+        purpose: EMediaPurpose.PRODUCT,
+        ownerId: productId,
+      });
+      const urls = await this.mediaClient.resolvePublicVariantUrls(assetId);
+      if (urls[0]) {
+        imageUrls.push(urls[0]);
+      }
+    }
+    return { imageUrls, imageAssetIds };
   }
 
   private async assertUniqueSku(

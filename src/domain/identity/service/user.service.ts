@@ -1,7 +1,12 @@
 import { IThrowedError } from '@sauvvitech/st-packages';
 import { randomUUID } from 'crypto';
+import {
+  assertOwnerOrAdminOnly,
+  isAdmin,
+} from '../../common/auth/actor-authorization';
 import { EErrorCode } from '../../common/errors/enums/EErrorCode';
 import { createEventEnvelope } from '../../common/messaging/event-envelope';
+import { IActorContext } from '../../common/types/actor-context';
 import { EUserStatus } from '../entity/enums/EUserStatus';
 import { UserServiceEntity } from '../entity/user.entity';
 import { IUser } from '../entity/interfaces/user.interface';
@@ -34,7 +39,7 @@ export class UserService implements IUserService {
   async createUser(params: IParamsCreateUser): Promise<IUser> {
     this.assertAdult(params.birthDate);
 
-    const entity = new UserServiceEntity({
+    const entity = this.buildUserEntity({
       id: params.id,
       fullName: params.fullName,
       email: params.email,
@@ -66,17 +71,9 @@ export class UserService implements IUserService {
     return created;
   }
 
-  async getUserById(id: string): Promise<IUser> {
-    const user = await this.userRepositoryRead.findUserById(id);
-    if (!user) {
-      throw {
-        status: 404,
-        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
-        message: 'User not found',
-        details: { id },
-      } as IThrowedError;
-    }
-    return user;
+  async getUserById(id: string, actor: IActorContext): Promise<IUser> {
+    assertOwnerOrAdminOnly(actor, id);
+    return this.loadUser(id);
   }
 
   async getUserByEmail(email: string): Promise<IUser> {
@@ -97,8 +94,10 @@ export class UserService implements IUserService {
   async updateUserById(
     id: string,
     params: IParamsUpdateUser,
+    actor: IActorContext,
   ): Promise<IUser> {
-    const existing = await this.getUserById(id);
+    assertOwnerOrAdminOnly(actor, id);
+    const existing = await this.loadUser(id);
     const nextBirthDate = params.userData.birthDate ?? existing.birthDate;
     this.assertAdult(nextBirthDate);
 
@@ -116,14 +115,30 @@ export class UserService implements IUserService {
       await this.assertUniqueCpf(nextCpf, id);
     }
 
-    const candidate = new UserServiceEntity({
+    const actorIsAdmin = isAdmin(actor);
+    const nextVerified =
+      actorIsAdmin && params.userData.verified !== undefined
+        ? params.userData.verified
+        : existing.verified;
+    const nextPhoneVerified =
+      actorIsAdmin && params.userData.phoneVerified !== undefined
+        ? params.userData.phoneVerified
+        : existing.phoneVerified;
+    const nextStatus =
+      actorIsAdmin && params.userData.status !== undefined
+        ? params.userData.status
+        : existing.status;
+
+    const candidate = this.buildUserEntity({
       ...existing,
-      ...params.userData,
       email: nextEmail,
       cpf: nextCpf,
       birthDate: nextBirthDate,
       fullName: params.userData.fullName ?? existing.fullName,
       phone: params.userData.phone ?? existing.phone,
+      verified: nextVerified,
+      phoneVerified: nextPhoneVerified,
+      status: nextStatus,
     });
 
     const updated = await this.userRepositoryWrite.updateUserById(id, {
@@ -148,8 +163,9 @@ export class UserService implements IUserService {
     return updated;
   }
 
-  async deleteUserById(id: string): Promise<IUser> {
-    const user = await this.getUserById(id);
+  async deleteUserById(id: string, actor: IActorContext): Promise<IUser> {
+    assertOwnerOrAdminOnly(actor, id);
+    const user = await this.loadUser(id);
     await this.userRepositoryWrite.deleteUserById(id);
     return user;
   }
@@ -171,7 +187,7 @@ export class UserService implements IUserService {
   }
 
   async verifyUser(userId: string): Promise<IUser> {
-    await this.getUserById(userId);
+    await this.loadUser(userId);
     const updated = await this.userRepositoryWrite.updateUserById(userId, {
       verified: true,
       status: EUserStatus.ACTIVE,
@@ -200,7 +216,7 @@ export class UserService implements IUserService {
   }
 
   async verifyPhone(userId: string): Promise<IUser> {
-    await this.getUserById(userId);
+    await this.loadUser(userId);
     const updated = await this.userRepositoryWrite.updateUserById(userId, {
       phoneVerified: true,
     });
@@ -213,6 +229,32 @@ export class UserService implements IUserService {
       } as IThrowedError;
     }
     return updated;
+  }
+
+  private async loadUser(id: string): Promise<IUser> {
+    const user = await this.userRepositoryRead.findUserById(id);
+    if (!user) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'User not found',
+        details: { id },
+      } as IThrowedError;
+    }
+    return user;
+  }
+
+  private buildUserEntity(user: IUser): UserServiceEntity {
+    try {
+      return new UserServiceEntity(user);
+    } catch (error) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message:
+          error instanceof Error ? error.message : 'Invalid user fields',
+      } as IThrowedError;
+    }
   }
 
   private assertAdult(birthDate: string): void {

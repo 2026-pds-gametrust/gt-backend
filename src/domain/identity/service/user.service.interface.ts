@@ -1,4 +1,5 @@
 import { IEventPublisher } from '../../common/messaging/event-publisher.interface';
+import { IActorContext } from '../../common/types/actor-context';
 import { EUserStatus } from '../entity/enums/EUserStatus';
 import { IUser } from '../entity/interfaces/user.interface';
 import { IUserSummary } from '../entity/interfaces/user-summary.interface';
@@ -41,10 +42,14 @@ export interface IParamsUserService {
 
 export interface IUserService {
   createUser(params: IParamsCreateUser): Promise<IUser>;
-  getUserById(id: string): Promise<IUser>;
+  getUserById(id: string, actor: IActorContext): Promise<IUser>;
   getUserByEmail(email: string): Promise<IUser>;
-  updateUserById(id: string, params: IParamsUpdateUser): Promise<IUser>;
-  deleteUserById(id: string): Promise<IUser>;
+  updateUserById(
+    id: string,
+    params: IParamsUpdateUser,
+    actor: IActorContext,
+  ): Promise<IUser>;
+  deleteUserById(id: string, actor: IActorContext): Promise<IUser>;
   listUsers(filter?: Partial<IUser>): Promise<IUser[]>;
   getUserSummary(userId: string): Promise<IUserSummary | null>;
   verifyUser(userId: string): Promise<IUser>;

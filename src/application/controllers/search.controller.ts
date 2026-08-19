@@ -9,6 +9,7 @@ import { SearchReconciliationService } from '../../domain/search/service/search-
 import { SynonymService } from '../../domain/search/service/synonym.service';
 import { IController } from '../../domain/server/interfaces/IController';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
+import { requireAccessToken } from '../middleware/require-access-token';
 
 export class SearchController implements IController {
   router: Router;
@@ -32,6 +33,7 @@ export class SearchController implements IController {
     this.router.get('/search', this.search);
     this.router.post(
       '/search/reconcile',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.reconcile,
     );
@@ -45,8 +47,11 @@ export class SearchController implements IController {
         filters = JSON.parse(req.query.filters);
       }
 
+      const rawQ = typeof req.query.q === 'string' ? req.query.q : undefined;
+      const q = rawQ?.trim() ? rawQ : undefined;
+
       const results = await this.searchDocumentService.search({
-        q: req.query.q as string | undefined,
+        q,
         categoryId: req.query.categoryId as string | undefined,
         filters,
         userId: req.query.userId as string | undefined,
@@ -59,8 +64,9 @@ export class SearchController implements IController {
 
   listSynonyms = async (req: Request, res: Response): Promise<void> => {
     try {
+      const rawQ = typeof req.query.q === 'string' ? req.query.q : undefined;
       const synonyms = await this.synonymService.listSynonyms(
-        req.query.q as string | undefined,
+        rawQ?.trim() ? rawQ : undefined,
       );
       res.status(200).json(synonyms);
     } catch (error) {

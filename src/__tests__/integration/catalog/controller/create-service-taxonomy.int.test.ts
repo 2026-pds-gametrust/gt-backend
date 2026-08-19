@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { ServiceTaxonomyModel } from '../../../../infraestructure/db/mongo/models/service-taxonomy.model';
@@ -10,7 +11,7 @@ describe('when we create a valid taxonomy service via HTTP', () => {
 
     const { body, statusCode } = await supertest(app.app)
       .post('/services')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: params.id,
         slug: params.slug,

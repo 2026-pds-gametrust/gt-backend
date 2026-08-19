@@ -3,6 +3,7 @@ import { Request, Response, Router } from 'express';
 import { FavoriteService } from '../../domain/favorites/service/favorite.service';
 import { IController } from '../../domain/server/interfaces/IController';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
+import { requireAccessToken } from '../middleware/require-access-token';
 
 export class FavoritesController implements IController {
   router: Router;
@@ -15,17 +16,20 @@ export class FavoritesController implements IController {
   }
 
   initRoutes() {
-    this.router.get('/favorites', this.listFavorites);
-    this.router.post('/favorites', this.createFavorite);
-    this.router.delete('/favorites/:id', this.deleteFavorite);
+    this.router.get('/favorites', requireAccessToken, this.listFavorites);
+    this.router.post('/favorites', requireAccessToken, this.createFavorite);
+    this.router.delete(
+      '/favorites/:id',
+      requireAccessToken,
+      this.deleteFavorite,
+    );
   }
 
   listFavorites = async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = req.query.userId as string;
-      const favorites = userId
-        ? await this.favoriteService.listByUserId(userId)
-        : [];
+      const favorites = await this.favoriteService.listByUserId(
+        req.actor.actorId,
+      );
       res.status(200).json(favorites);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);

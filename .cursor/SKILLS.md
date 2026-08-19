@@ -22,7 +22,7 @@ Canonical code shapes: [`examples/canonical-user/`](../examples/canonical-user/)
 | [skill-new-context](skills/skill-new-context/SKILL.md) | New bounded context end-to-end |
 | [skill-add-http-endpoint](skills/skill-add-http-endpoint/SKILL.md) | New route in an existing context |
 | [skill-mongo-persistence](skills/skill-mongo-persistence/SKILL.md) | `IM*`, adapter, Read/Write repos |
-| [skill-sqs-messaging](skills/skill-sqs-messaging/SKILL.md) | SQS producer/consumer (domain contract + infra) |
+| [skill-kafka-messaging](skills/skill-kafka-messaging/SKILL.md) | Kafka producer/consumer (domain contract + infra) |
 | [skill-domain-errors](skills/skill-domain-errors/SKILL.md) | `EErrorCode`, catalog, translated HTTP errors |
 | [skill-openapi-contract](skills/skill-openapi-contract/SKILL.md) | Keep `service.yaml` aligned |
 | [skill-tests-layered](skills/skill-tests-layered/SKILL.md) | Jest unit/int layout; `when`/`should`; mock policy (`agt-test-author`) |
@@ -33,6 +33,7 @@ Canonical code shapes: [`examples/canonical-user/`](../examples/canonical-user/)
 |-------|---------|
 | [skill-review-naming](skills/skill-review-naming/SKILL.md) | Identifier audit by layer |
 | [skill-review-rest-endpoints](skills/skill-review-rest-endpoints/SKILL.md) | Routes, verbs, YAML parity (+ `reference-rest.md`) |
+| [skill-review-security](skills/skill-review-security/SKILL.md) | Authorization, injection, secrets, exposure (+ `reference-owasp.md`) |
 
 ## Architecture discovery (agnostic)
 
@@ -40,8 +41,13 @@ Canonical code shapes: [`examples/canonical-user/`](../examples/canonical-user/)
 |-------|---------|
 | [skill-architecture-discovery](skills/skill-architecture-discovery/SKILL.md) | As-is profile, pattern mining, gated rule stewardship (any style/stack) |
 
-Agents: `agt-architecture-probe`, `agt-pattern-miner`, `agt-pattern-steward` —
-see [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md).
+**Quick start (Path D):** ask [`agt-orchestrator`](agents/agt-orchestrator.md) to
+map the repo as-is, or invoke [`agt-architecture-probe`](agents/agt-architecture-probe.md)
+directly. Consolidated report: [`agt-architecture-analyst`](agents/agt-architecture-analyst.md)
+→ `docs/architecture/analysis.md`. Copy-paste prompts: [README — Architecture discovery workflow](../README.md#architecture-discovery-workflow)
+and [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md) (Quick start).
+
+Agents: `agt-architecture-probe`, `agt-pattern-miner`, `agt-architecture-analyst`, `agt-pattern-steward`.
 
 ## Ops
 

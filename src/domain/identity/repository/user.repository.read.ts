@@ -5,4 +5,6 @@ export interface IUserRepositoryRead {
   findUserByEmail(email: string): Promise<IUser | null>;
   findUserByCpf(cpf: string): Promise<IUser | null>;
   listUsers(filter?: Partial<IUser>): Promise<IUser[]>;
+  findUserIdsBySearchQuery(query: string, limit: number): Promise<string[]>;
+  findUsersByIds(ids: string[]): Promise<IUser[]>;
 }

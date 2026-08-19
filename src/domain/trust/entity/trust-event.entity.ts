@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { ETrustEventType } from './enums/ETrustEventType';
 import { ITrustEvent } from './interfaces/trust-event.interface';
 
@@ -22,18 +23,12 @@ export class TrustEventServiceEntity implements ITrustEvent {
   }
 
   private validate(event: ITrustEvent): void {
-    if (!event.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!event.sellerId?.trim()) {
-      throw new Error('sellerId is required');
-    }
+    requireNonEmptyString(event.id, 'id');
+    requireNonEmptyString(event.sellerId, 'sellerId');
     if (!event.type) {
       throw new Error('type is required');
     }
-    if (!event.sourceEventId?.trim()) {
-      throw new Error('sourceEventId is required');
-    }
+    requireNonEmptyString(event.sourceEventId, 'sourceEventId');
     if (!event.payload || typeof event.payload !== 'object') {
       throw new Error('payload is required');
     }

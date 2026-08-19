@@ -11,6 +11,7 @@ import { ProductService } from '../../domain/catalog/service/product.service';
 import { ServiceTaxonomyService } from '../../domain/catalog/service/service-taxonomy.service';
 import { IController } from '../../domain/server/interfaces/IController';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
+import { requireAccessToken } from '../middleware/require-access-token';
 
 export class CatalogController implements IController {
   router: Router;
@@ -44,17 +45,20 @@ export class CatalogController implements IController {
     );
     this.router.put(
       '/categories/:categoryId/attribute-schema',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.upsertAttributeSchema,
     );
     this.router.get('/categories/:id', this.getCategoryById);
     this.router.post(
       '/categories',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.createCategory,
     );
     this.router.put(
       '/categories/:id',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.updateCategory,
     );
@@ -63,11 +67,13 @@ export class CatalogController implements IController {
     this.router.get('/services/:id', this.getServiceById);
     this.router.post(
       '/services',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.createService,
     );
     this.router.put(
       '/services/:id',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.updateService,
     );
@@ -77,11 +83,13 @@ export class CatalogController implements IController {
     this.router.get('/products/:id', this.getProductById);
     this.router.post(
       '/products',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.createProduct,
     );
     this.router.put(
       '/products/:id',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.updateProduct,
     );
@@ -262,6 +270,7 @@ export class CatalogController implements IController {
         sku: req.body.sku,
         specs: req.body.specs,
         imageUrls: req.body.imageUrls,
+        imageAssetIds: req.body.imageAssetIds,
         referencePriceCents: req.body.referencePriceCents,
         currency: req.body.currency,
         status: req.body.status,

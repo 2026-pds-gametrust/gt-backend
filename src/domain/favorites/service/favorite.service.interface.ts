@@ -3,6 +3,8 @@ import { IActorContext } from '../../common/types/actor-context';
 import { IProductRepositoryRead } from '../../catalog/repository/product.repository.read';
 import { IUserRepositoryRead } from '../../identity/repository/user.repository.read';
 import { IListingRepositoryRead } from '../../listings/repository/listing.repository.read';
+import { EListingStatus } from '../../listings/entity/enums/EListingStatus';
+import { ISealRepositoryRead } from '../../verification/repository/seal.repository.read';
 import { EFavoriteTargetType } from '../entity/enums/EFavoriteTargetType';
 import { IFavorite } from '../entity/interfaces/favorite.interface';
 import { IFavoriteRepositoryRead } from '../repository/favorite.repository.read';
@@ -22,6 +24,7 @@ export interface IParamsFavoriteService {
   userRepositoryRead: IUserRepositoryRead;
   productRepositoryRead: IProductRepositoryRead;
   listingRepositoryRead: IListingRepositoryRead;
+  sealRepositoryRead: ISealRepositoryRead;
   eventPublisher: IEventPublisher;
 }
 

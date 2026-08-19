@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { ESynonymTargetType } from './enums/ESynonymTargetType';
 import { ISynonym } from './interfaces/synonym.interface';
 
@@ -20,14 +21,10 @@ export class SynonymServiceEntity implements ISynonym {
   }
 
   private validate(synonym: ISynonym): void {
-    if (!synonym.id?.trim()) throw new Error('id is required');
-    if (!synonym.normalizedTerm?.trim()) {
-      throw new Error('normalizedTerm is required');
-    }
+    requireNonEmptyString(synonym.id, 'id');
+    requireNonEmptyString(synonym.normalizedTerm, 'normalizedTerm');
     if (!synonym.targetType) throw new Error('targetType is required');
-    if (!synonym.targetId?.trim()) throw new Error('targetId is required');
-    if (!synonym.canonicalName?.trim()) {
-      throw new Error('canonicalName is required');
-    }
+    requireNonEmptyString(synonym.targetId, 'targetId');
+    requireNonEmptyString(synonym.canonicalName, 'canonicalName');
   }
 }

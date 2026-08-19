@@ -3,12 +3,20 @@ import {
   ReceiveMessageCommand,
   DeleteMessageCommand,
 } from '@aws-sdk/client-sqs';
+import { Logger } from 'traceability';
 import { IEventEnvelope } from '../../../domain/common/messaging/event-envelope';
 import { IEventHandler } from '../../../domain/common/messaging/event-handler.interface';
+
+/** Backoff after a receive failure so a broker outage does not spin the loop. */
+const RECEIVE_RETRY_DELAY_MS = 5000;
 
 /**
  * Long-poll SQS consumer skeleton (DEC-050 / DEC-053).
  * Parses envelope JSON and delegates to domain IEventHandler; deletes only after success.
+ *
+ * A message that fails to parse or whose handler throws is never deleted: it returns to
+ * the queue so the redrive policy can count it toward the DLQ. Neither case may break the
+ * polling loop — a single poison message must not stop event processing for the process.
  */
 export class SqsEventConsumer {
   private readonly sqs: SQSClient;
@@ -47,8 +55,20 @@ export class SqsEventConsumer {
       if (!message.Body || !message.ReceiptHandle) {
         continue;
       }
-      const envelope = JSON.parse(message.Body) as IEventEnvelope;
-      await this.handler.handle(envelope);
+
+      try {
+        const envelope = JSON.parse(message.Body) as IEventEnvelope;
+        await this.handler.handle(envelope);
+      } catch (error) {
+        // Leave the message on the queue: the redrive policy counts the retries and
+        // moves it to the DLQ after maxReceiveCount.
+        Logger.error(
+          `SQS message failed for ${this.queueUrl}, left for redrive: ${String(error)}`,
+          { eventName: 'sqs_message_error' },
+        );
+        continue;
+      }
+
       await this.sqs.send(
         new DeleteMessageCommand({
           QueueUrl: this.queueUrl,
@@ -59,9 +79,26 @@ export class SqsEventConsumer {
   }
 
   async start(): Promise<void> {
+    if (!this.queueUrl) {
+      // Misconfiguration fails fast; the loop below only tolerates runtime errors.
+      throw new Error('SQS_QUEUE_URL is required');
+    }
+
     this.running = true;
     while (this.running) {
-      await this.pollOnce();
+      try {
+        await this.pollOnce();
+      } catch (error) {
+        // Receive/delete failure (broker down, credentials, throttling). Keep polling —
+        // stopping here would silently halt every domain event for the whole process.
+        Logger.error(
+          `SQS poll failed for ${this.queueUrl}: ${String(error)}`,
+          { eventName: 'sqs_poll_error' },
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, RECEIVE_RETRY_DELAY_MS),
+        );
+      }
     }
   }
 

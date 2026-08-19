@@ -5,6 +5,7 @@ export interface IEvidenceItem {
   caseId: string;
   type: EEvidenceType;
   storageKey: string;
+  assetId?: string;
   contentHash?: string;
   createdAt: Date;
 }

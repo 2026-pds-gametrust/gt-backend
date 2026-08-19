@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { CategoryModel } from '../../../../infraestructure/db/mongo/models/category.model';
@@ -13,7 +14,7 @@ describe('when we create a product via HTTP', () => {
 
     const { body, statusCode } = await supertest(app.app)
       .post('/products')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: product.id,
         categoryId: product.categoryId,

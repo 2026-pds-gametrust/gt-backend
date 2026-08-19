@@ -7,6 +7,7 @@ export function dbToInternal(doc: IMEvidenceItem): IEvidenceItem {
     caseId: doc.caseId,
     type: doc.type,
     storageKey: doc.storageKey,
+    assetId: doc.assetId,
     contentHash: doc.contentHash,
     createdAt: doc.createdAt,
   };
@@ -20,6 +21,7 @@ export function internalToDb(
     caseId: evidence.caseId,
     type: evidence.type,
     storageKey: evidence.storageKey,
+    assetId: evidence.assetId,
     contentHash: evidence.contentHash,
   };
 }

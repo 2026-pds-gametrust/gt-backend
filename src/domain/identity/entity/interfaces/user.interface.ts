@@ -10,6 +10,7 @@ export interface IUser {
   verified: boolean;
   phoneVerified: boolean;
   status: EUserStatus;
+  groups?: string[];
   createdAt: Date;
   updatedAt?: Date;
 }

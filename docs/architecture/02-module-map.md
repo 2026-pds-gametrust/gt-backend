@@ -3,11 +3,11 @@
 feature: architecture-canon
 doc: ARCH-002
 status: Approved
-version: 0.1.1
+version: 0.1.4
 owner: Architecture
 jira: N/A
 createdAt: 2026-08-07
-updatedAt: 2026-08-07
+updatedAt: 2026-08-19
 approvedBy: Plan execution gate (Ralph Loops Fase 1)
 approvedAt: 2026-08-07
 
@@ -19,13 +19,14 @@ Module rules: [01-modular-monolith.md](01-modular-monolith.md). Communication se
 
 | Module (slug) | Phase | Owns (collections) | Publishes (events) | Consumes (events) | Sync ports exposed | MVP-detail |
 |---------------|-------|--------------------|--------------------|-------------------|--------------------|------------|
-| `identity` | 1 | `users`, `profiles` | `identity.user.registered`, `identity.user.verified` | — | `IIdentityClient.getUserSummary(userId)` | yes |
+| `identity` | 1 | `users`, `profiles`, `credentials`, `refresh_sessions` | `identity.user.registered`, `identity.user.verified` | — | `IIdentityClient.getUserSummary(userId)` | yes |
 | `catalog` | 1 | `products`, `categories`, `services`, `category_attribute_schemas`, `price_history` (until P3 — DEC-023). Master-data synonyms live on `categories`/`services` (DEC-024) | `catalog.product.created`, `catalog.product.updated`, `catalog.category.created`, `catalog.category.updated`, `catalog.service.created`, `catalog.service.updated` | — | `ICatalogClient.getProduct(productId)`, `ICatalogClient.getCategory(categoryId)`, `ICatalogClient.getService(serviceId)`, `ICatalogClient.getCategoryAttributes(categoryId)` | yes |
-| `listings` | 1 | `listings` (one physical unit each), `listing_events` (state history) | `listings.listing.submitted`, `listings.listing.published`, `listings.listing.updated`, `listings.listing.paused`, `listings.listing.expired`; P2: `listings.listing.reserved`, `listings.listing.sold` | `verification.case.approved`, `verification.case.rejected`; P2: `orders.order.cancelled` | `IListingsClient.getListing(listingId)`; P2: `IListingsClient.reserve(listingId, orderId)`, `IListingsClient.release(listingId, orderId)` | yes |
-| `verification` | 1 | `verification_cases`, `evidence_items`, `seals` | `verification.case.submitted`, `verification.case.approved`, `verification.case.rejected`, `verification.seal.granted`, `verification.seal.suspended`, `verification.seal.expired`, `verification.seal.revoked` | `listings.listing.submitted`, `listings.listing.updated` (re-verification trigger) | `IVerificationClient.getSeals(listingId)` | yes |
+| `listings` | 1 | `listings` (one physical unit each), `listing_events` (state history) | `listings.listing.submitted`, `listings.listing.published`, `listings.listing.updated`, `listings.listing.paused`, `listings.listing.expired`; P2: `listings.listing.reserved`, `listings.listing.sold` | `verification.case.approved`, `verification.case.changes_requested`, `verification.case.rejected`; P2: `orders.order.cancelled` | `IListingsClient.getListing(listingId)`; P2: `IListingsClient.reserve(listingId, orderId)`, `IListingsClient.release(listingId, orderId)` | yes |
+| `verification` | 1 | `verification_cases`, `evidence_items`, `seals` | `verification.case.submitted`, `verification.case.approved`, `verification.case.changes_requested`, `verification.case.rejected`, `verification.seal.granted`, `verification.seal.suspended`, `verification.seal.expired`, `verification.seal.revoked` | `listings.listing.submitted`, `listings.listing.updated` (re-verification trigger) | `IVerificationClient.getSeals(listingId)` | yes |
 | `trust` | 1 | `trust_scores`, `trust_events` (append-only ledger), `seller_levels` | `trust.score.updated` | `verification.seal.granted`, `verification.seal.revoked`, `identity.user.verified`; P2: `orders.order.completed`, `orders.order.cancelled`, `disputes.dispute.resolved`, `reviews.review.submitted` | `ITrustClient.getTrustScore(sellerId)` | yes |
 | `search` | 1 | `search_documents` (read model; vector field in P3), `synonyms` (operational projection of catalog taxonomy aliases — DEC-024; not master data), `query_logs` | `search.zero-result.recorded` | `listings.listing.published`, `listings.listing.updated`, `listings.listing.paused`, `listings.listing.expired`, `listings.listing.sold` (P2), `catalog.product.updated`, `catalog.category.created`, `catalog.category.updated`, `catalog.service.created`, `catalog.service.updated`, `trust.score.updated` | — (public REST only: `/search`, `/autocomplete`) | yes |
 | `favorites` | 1 (alerts P2) | `favorites`; P2: `saved_searches`, `alerts` | P2: `favorites.alert.triggered` | P2: `listings.listing.updated` (price drop), `listings.listing.published` (new offer for model), `search.zero-result.recorded` | — | yes |
+| `media` | 1 | `media_assets` | `media.asset.uploaded`, `media.asset.processed` | `media.asset.uploaded` (self, process worker) | `IMediaClient.getReadyAsset`, `IMediaClient.resolvePublicVariantUrls`, `IMediaClient.assertAttachableAsset` | yes |
 | `orders` | 2 | `orders`, `negotiations` (offer/counteroffer), `delivery_codes` | `orders.order.created`, `orders.order.confirmed`, `orders.order.shipped`, `orders.order.delivered`, `orders.order.completed`, `orders.order.cancelled`, `orders.offer.made`, `orders.offer.countered`, `orders.offer.accepted`, `orders.offer.declined` | `payments.escrow.held`, `payments.escrow.released`, `payments.escrow.refunded`, `payments.escrow.failed`, `disputes.dispute.resolved` | `IOrdersClient.getOrder(orderId)`, `IOrdersClient.isCompletedPurchase(orderId, buyerId)` | no |
 | `payments` | 2 | `payments`, `escrow_holds`, `refunds`, `payout_accounts` | `payments.escrow.held`, `payments.escrow.released`, `payments.escrow.refunded`, `payments.escrow.failed` (FIFO — DEC-051) | `orders.order.created`, `orders.order.completed`, `orders.order.cancelled`, `disputes.dispute.resolved` | `IPaymentsClient.getPaymentStatus(orderId)` | no |
 | `disputes` | 2 | `disputes`, `dispute_evidence`, `appeals` | `disputes.dispute.opened`, `disputes.dispute.resolved`, `disputes.dispute.appealed` | `orders.order.delivered`, `orders.order.completed` (dispute-window control) | `IDisputesClient.getOpenDispute(orderId)` | no |
@@ -49,7 +50,7 @@ These product capabilities are **compositions over existing module surfaces**, n
 
 | Phase | Modules active |
 |-------|----------------|
-| 1 — Discovery & Trust (MVP) | identity, catalog, listings, verification, trust, search, favorites |
+| 1 — Discovery & Trust (MVP) | identity, catalog, listings, verification, trust, search, favorites, media |
 | 2 — Purchase & Reputation | + orders, payments, disputes, reviews, notifications; favorites gains alerts |
 | 3 — Differentiated Search & AI | + ai, pricing, moderation; search gains vector/NL | 
 | 4 — Ecosystem | + ads, analytics matured; ecosystem items via new specs |
@@ -80,7 +81,7 @@ Canonical names follow `<module>.<aggregate>.<past-tense-verb>` (DEC-031). The a
 | `listings.listing.updated` | listings | verification (1, re-verification), search (1), favorites (2) |
 | `listings.listing.paused` / `.expired` | listings | search (1) |
 | `listings.listing.reserved` / `.sold` | listings | search (2), pricing (3) |
-| `verification.case.approved` / `.rejected` | verification | listings (1, publish gate) |
+| `verification.case.approved` / `.changes_requested` / `.rejected` | verification | listings (1: publish gate, corrections→DRAFT, definitive→REJECTED) |
 | `verification.seal.granted` / `.suspended` / `.expired` / `.revoked` | verification | trust (1), search (1, via trust score or direct) |
 | `identity.user.registered` / `.verified` | identity | trust (1) |
 | `trust.score.updated` | trust | search (1) |
@@ -135,6 +136,12 @@ graph LR
     listings -.->|listing.published / updated / paused / expired| search
     catalog -.->|product.*| search
     trust -.->|score.updated| search
+    listings -->|assertAttachableAsset| media
+    catalog -->|assertAttachableAsset| media
+    verification -->|assertAttachableAsset| media
+    media -.->|asset.processed| listings
+    media -.->|asset.processed| catalog
+    media -.->|asset.processed| verification
   end
 ```
 
@@ -157,6 +164,8 @@ Note: `verification → listings (getListing)` and `listings → verification (g
 | DEC-022 | Sync dependency shape | Sync-port graph must be acyclic; cycles broken with events/read models (see diagram note) | Allowing bidirectional sync ports (blocks future extraction; deadlock-prone sagas) | Approved |
 | DEC-023 | `price_history` ownership | catalog (P1–2) → pricing (P3) with documented migration | Creating `pricing` in Phase 1 just to hold one collection | Approved |
 | DEC-024 | Taxonomy master data | Unique `categories` + `services` in catalog; synonyms on entities; global synonym uniqueness across both; search.synonyms is projection only | Synonyms owned only by search (ambiguous edits); services outside catalog; allowing duplicate synonyms | Approved |
+| DEC-025 | Identity auth collections | `identity` owns `credentials` (password hash, never on `users`) and `refresh_sessions` (hashed opaque refresh + family) in addition to `users` / `profiles` | A separate `auth` module; storing password on `users`; Cognito-hosted credential store | Draft (`auth-mvp`) |
+| DEC-026 | Image object storage | `media` owns `media_assets` + S3 access; catalog/listings/verification attach via `IMediaClient`; public vs restricted buckets (DEC-071) | Storage inside listings; client-chosen keys; public evidence URLs | Approved (`media-s3-mvp`) |
 
 ## Approval
 
@@ -168,5 +177,7 @@ Note: `verification → listings (getListing)` and `listings → verification (g
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.1.3 | 2026-08-13 | DEC-026: `media` module owns `media_assets` and S3 |
+| 0.1.2 | 2026-08-13 | DEC-025: identity owns `credentials` and `refresh_sessions` |
 | 0.1.1 | 2026-08-07 | DEC-024: `services` collection, category/service events & ports, synonym ownership |
 | 0.1.0 | 2026-08-07 | Initial module map from context/GamerTrust-00..08 |

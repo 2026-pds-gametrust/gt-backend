@@ -9,6 +9,7 @@ import { SellerLevelService } from '../../domain/trust/service/seller-level.serv
 import { TrustEventService } from '../../domain/trust/service/trust-event.service';
 import { TrustScoreService } from '../../domain/trust/service/trust-score.service';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
+import { requireAccessToken } from '../middleware/require-access-token';
 
 export class TrustController implements IController {
   router: Router;
@@ -32,6 +33,7 @@ export class TrustController implements IController {
     this.router.get('/trust-events', this.listTrustEvents);
     this.router.post(
       '/trust-events',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.appendTrustEvent,
     );
@@ -41,6 +43,7 @@ export class TrustController implements IController {
     );
     this.router.post(
       '/trust-scores/:sellerId/recompute',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.recomputeTrustScore,
     );

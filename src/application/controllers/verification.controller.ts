@@ -9,6 +9,7 @@ import { EvidenceItemService } from '../../domain/verification/service/evidence-
 import { SealService } from '../../domain/verification/service/seal.service';
 import { VerificationCaseService } from '../../domain/verification/service/verification-case.service';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
+import { requireAccessToken } from '../middleware/require-access-token';
 
 export class VerificationController implements IController {
   router: Router;
@@ -29,23 +30,42 @@ export class VerificationController implements IController {
   }
 
   initRoutes() {
-    this.router.get('/verification-cases', this.listVerificationCases);
-    this.router.get('/verification-cases/:id', this.getVerificationCaseById);
+    this.router.get(
+      '/verification-cases',
+      requireAccessToken,
+      authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
+      this.listVerificationCases,
+    );
+    this.router.get(
+      '/verification-cases/:id',
+      requireAccessToken,
+      authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
+      this.getVerificationCaseById,
+    );
     this.router.post('/verification-cases', this.openVerificationCase);
     this.router.post(
       '/verification-cases/:id/assign',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.assignReviewer,
     );
     this.router.post(
       '/verification-cases/:id/approve',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.approveCase,
     );
     this.router.post(
       '/verification-cases/:id/reject',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.rejectCase,
+    );
+    this.router.post(
+      '/verification-cases/:id/request-changes',
+      requireAccessToken,
+      authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
+      this.requestChangesCase,
     );
 
     this.router.get(
@@ -61,19 +81,50 @@ export class VerificationController implements IController {
     this.router.get('/seals/:id', this.getSealById);
     this.router.post(
       '/seals/:id/revoke',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.revokeSeal,
     );
   }
 
   listVerificationCases = async (
-    _req: Request,
+    req: Request,
     res: Response,
   ): Promise<void> => {
     try {
-      const cases =
-        await this.verificationCaseService.listVerificationCases();
-      res.status(200).json(cases);
+      const status =
+        typeof req.query.status === 'string' ? req.query.status : undefined;
+      const q = typeof req.query.q === 'string' ? req.query.q : undefined;
+      const moderatorId =
+        typeof req.query.moderatorId === 'string'
+          ? req.query.moderatorId
+          : undefined;
+      const limit =
+        req.query.limit !== undefined ? Number(req.query.limit) : undefined;
+      const offset =
+        req.query.offset !== undefined ? Number(req.query.offset) : undefined;
+      const minScore =
+        req.query.minScore !== undefined ? Number(req.query.minScore) : undefined;
+      const maxScore =
+        req.query.maxScore !== undefined ? Number(req.query.maxScore) : undefined;
+      const hasAiScore =
+        req.query.hasAiScore === 'true'
+          ? true
+          : req.query.hasAiScore === 'false'
+            ? false
+            : undefined;
+
+      const page = await this.verificationCaseService.listModerationQueue({
+        status: status as never,
+        q,
+        moderatorId,
+        minScore,
+        maxScore,
+        hasAiScore,
+        limit,
+        offset,
+      });
+      res.status(200).json(page);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);
     }
@@ -158,6 +209,24 @@ export class VerificationController implements IController {
     }
   };
 
+  requestChangesCase = async (
+    req: Request<{ id: string }>,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const updated = await this.verificationCaseService.requestChangesCase(
+        req.params.id,
+        {
+          summary: req.body.summary,
+          requiredChanges: req.body.requiredChanges,
+        },
+      );
+      res.status(200).json(updated);
+    } catch (error) {
+      handleTranslatedError(error, ErrorCatalog, res);
+    }
+  };
+
   listEvidence = async (
     req: Request<{ caseId: string }>,
     res: Response,
@@ -182,6 +251,7 @@ export class VerificationController implements IController {
         caseId: req.params.caseId,
         type: req.body.type,
         storageKey: req.body.storageKey,
+        assetId: req.body.assetId,
         contentHash: req.body.contentHash,
       });
       res.status(201).json(created);

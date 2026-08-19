@@ -3,11 +3,11 @@
 feature: architecture-canon
 doc: ARCH-007
 status: Approved
-version: 0.1.0
+version: 0.1.1
 owner: Architecture
 jira: N/A
 createdAt: 2026-08-07
-updatedAt: 2026-08-07
+updatedAt: 2026-08-13
 approvedBy: Plan execution gate (Ralph Loops Fase 1)
 approvedAt: 2026-08-07
 
@@ -30,7 +30,10 @@ Each layer has a fixed security responsibility; crossing them is a `BLOCKING_SEC
 ## AuthN / AuthZ standard
 
 - **AuthN**: JWT bearer tokens; validation in the auth middleware (kit `@sauvvitech/st-packages` pattern — `authorizeByGroup`).
+- **First-party issuance (DEC-073)**: this service issues its own short-lived access JWT and rotatable opaque refresh tokens. Cognito and other external IdPs are **not** used. After a Bearer access token is verified, `ActorContext` is built **only** from that token. Client-sent `x-user-id` / `x-user-groups` are untrusted and must not set actor id or groups. To keep `authorizeByGroup` working, the middleware may **internally** mirror verified token groups onto `x-user-groups` — never the inbound client header.
+- **Refresh (DEC-073)**: refresh tokens are opaque, hashed at rest, rotated on use; reuse of a revoked refresh token revokes the session family.
 - **Groups**: `buyer`, `seller`, `moderator`, `admin`, `service` (internal jobs). A user may hold several (buyer+seller is the normal marketplace case).
+- **HTTP groups in this codebase** are `EUserGroup` (`app-user`, `partner`, `admin`, `backoffice`) plus non-HTTP `SYSTEM`. Those names are **not** a mapping of the product list above (no `buyer`↔`APP_USER` invented here; see `auth-mvp` RQ-01).
 - **Route → group matrix** is maintained **next to `service.yaml`** and updated in the same PR as any route change; `service.yaml` documents the security scheme per operation. A route without an explicit entry (even `public`) fails review.
 - **Ownership checks are Service business rules** (kit rule 2): the application layer answers "is this a seller?"; the `listings` Service answers "is this *their* listing?".
 - Moderator/admin actions are always attributable: `ActorContext.userId` recorded in `audit_logs` / decision history (moderation module) — a product requirement (decision history, right of reply).
@@ -91,6 +94,7 @@ Restricted-class rules (DEC-071):
 | DEC-070 | Authorization placement | Group auth in application middleware; ownership/state rules in Services on a validated `ActorContext`; domain never sees tokens | Token parsing in services (layer violation); trusting client-sent user ids (spoofable) | Draft |
 | DEC-071 | Evidence & proof-code handling | Restricted class: private bucket + presigned URLs, hashed codes, log-forbidden, public summary only | Serving media from public storage with obscure URLs; storing plaintext codes | Draft |
 | DEC-072 | PII in messaging | Events carry ids/facts only; personal data fetched via ports with actor context | PII in event payloads (copies PII into queues, DLQs, logs — unbounded LGPD surface) | Draft |
+| DEC-073 | First-party JWT session | This backend issues HS256 access JWTs and hashed opaque refresh tokens (rotation + family revoke on reuse). Cognito / external IdP rejected. `ActorContext` comes only from a verified access token; client `x-user-*` is untrusted. Internal header mirror is allowed solely so `authorizeByGroup` reads token groups. HTTP group vocabulary is `EUserGroup` — do not map ARCH-007 `buyer`/`seller`/`moderator`/`service` in this decision. | Cognito; cookies as session transport; trusting gateway headers; dual-trust “headers if no Bearer”; invented buyer/seller mapping | Draft (`auth-mvp`) |
 
 ## Approval
 
@@ -102,4 +106,5 @@ Restricted-class rules (DEC-071):
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.1.1 | 2026-08-13 | DEC-073: first-party JWT issuance, Cognito rejected, refresh rotation, ActorContext from verified access token only |
 | 0.1.0 | 2026-08-07 | Initial security standard |

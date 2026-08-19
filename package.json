@@ -18,7 +18,9 @@
     "test:int": "NODE_ENV=test NEW_RELIC_ENABLED=false NEW_RELIC_NO_CONFIG_FILE=true NEW_RELIC_LOG_LEVEL=error jest --runInBand --forceExit --config ./jest/jest.int-config.ts --detectOpenHandles",
     "test:component": "jest --runInBand --config ./jest/jest.component-config.ts --detectOpenHandles",
     "test:mutation": "npx stryker run",
-    "test:coverage": "NODE_ENV=test NEW_RELIC_ENABLED=false NEW_RELIC_NO_CONFIG_FILE=true NEW_RELIC_LOG_LEVEL=error jest --coverage --runInBand --forceExit --config ./jest/jest.coverage-config.ts --detectOpenHandles"
+    "test:coverage": "NODE_ENV=test NEW_RELIC_ENABLED=false NEW_RELIC_NO_CONFIG_FILE=true NEW_RELIC_LOG_LEVEL=error jest --coverage --runInBand --forceExit --config ./jest/jest.coverage-config.ts --detectOpenHandles",
+    "seed:local": "NODE_ENV=development ts-node -r dotenv/config scripts/seed-local.ts",
+    "docs:api": "node scripts/generate-frontend-api-docs.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
@@ -27,7 +29,11 @@
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/release-notes-generator": "^14.0.1",
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express-rate-limit": "^6.0.2",
     "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/mongodb-memory-server": "^2.3.0",
     "@types/node": "^22.10.1",
     "@types/supertest": "^6.0.2",
@@ -52,14 +58,21 @@
   "license": "ISC",
   "repository": "git@github.com:whitebeardit/node-boilerplate.git",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1105.0",
     "@aws-sdk/client-sns": "^3.1105.0",
     "@aws-sdk/client-sqs": "^3.1105.0",
+    "@aws-sdk/s3-request-presigner": "^3.1105.0",
     "@sauvvitech/st-packages": "^3.9.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.7",
     "express": "^4.19.2",
     "express-openapi-validator": "^4.13.8",
+    "express-rate-limit": "^8.6.2",
     "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.8.3",
+    "sharp": "^0.35.3",
     "traceability": "^3.2.2"
   }
 }

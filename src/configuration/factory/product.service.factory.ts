@@ -4,6 +4,7 @@ import { PriceHistoryRepositoryWrite } from '../../infraestructure/repository/ca
 import { ProductRepositoryRead } from '../../infraestructure/repository/catalog/product.repository.read';
 import { ProductRepositoryWrite } from '../../infraestructure/repository/catalog/product.repository.write';
 import { EventPublisherFactory } from './messaging/event-publisher.factory';
+import { MediaAssetServiceFactory } from './media-asset.service.factory';
 
 export class ProductServiceFactory {
   static create() {
@@ -13,6 +14,7 @@ export class ProductServiceFactory {
       categoryRepositoryRead: new CategoryRepositoryRead(),
       priceHistoryRepositoryWrite: new PriceHistoryRepositoryWrite(),
       eventPublisher: EventPublisherFactory.create(),
+      mediaClient: MediaAssetServiceFactory.create(),
     });
   }
 }

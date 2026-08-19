@@ -48,7 +48,7 @@ no relation to any task as potential scope creep.
 
 ### 4. Architecture checklist
 
-- [ ] Domain does not import Infraestructure (`mongoose`, `IM*`, concrete SQS messaging)
+- [ ] Domain does not import Infraestructure (`mongoose`, `IM*`, concrete Kafka)
 - [ ] Controller thin — no rules, no `*Model`
 - [ ] Repository returns `null` (no product 404/409)
 - [ ] Adapters pure

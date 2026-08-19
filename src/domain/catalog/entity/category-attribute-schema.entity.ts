@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { EAttributeType } from './enums/EAttributeType';
 import {
   IAttributeDef,
@@ -36,12 +37,8 @@ export class CategoryAttributeSchemaServiceEntity
   }
 
   private validate(schema: ICategoryAttributeSchema): void {
-    if (!schema.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!schema.categoryId?.trim()) {
-      throw new Error('categoryId is required');
-    }
+    requireNonEmptyString(schema.id, 'id');
+    requireNonEmptyString(schema.categoryId, 'categoryId');
     if (!Number.isInteger(schema.version) || schema.version < 1) {
       throw new Error('version must be an integer >= 1');
     }
@@ -51,12 +48,8 @@ export class CategoryAttributeSchemaServiceEntity
 
     const keys = new Set<string>();
     for (const attr of schema.attributes) {
-      if (!attr.key?.trim()) {
-        throw new Error('attribute key is required');
-      }
-      if (!attr.name?.trim()) {
-        throw new Error('attribute name is required');
-      }
+      requireNonEmptyString(attr.key, 'attribute key');
+      requireNonEmptyString(attr.name, 'attribute name');
       const key = attr.key.trim();
       if (keys.has(key)) {
         throw new Error(`attribute key must be unique: ${key}`);

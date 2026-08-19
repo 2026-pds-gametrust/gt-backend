@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { CategoryModel } from '../../../../infraestructure/db/mongo/models/category.model';
@@ -21,8 +22,7 @@ describe('when we create and submit a listing via HTTP', () => {
 
     await supertest(app.app)
       .post('/products')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: product.id,
         categoryId: product.categoryId,
@@ -38,7 +38,7 @@ describe('when we create and submit a listing via HTTP', () => {
 
     const created = await supertest(app.app)
       .post('/listings')
-      .set('x-user-id', user.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
       .send({
         id: listing.id,
         sellerId: listing.sellerId,
@@ -56,7 +56,7 @@ describe('when we create and submit a listing via HTTP', () => {
 
     const submitted = await supertest(app.app)
       .post(`/listings/${listing.id}/submit`)
-      .set('x-user-id', user.id);
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
     expect(submitted.statusCode).toBe(200);
     expect(submitted.body.status).toBe('SUBMITTED');
 

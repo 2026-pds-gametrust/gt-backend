@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { UserModel } from '../../../../infraestructure/db/mongo/models/user.model';
@@ -15,6 +16,10 @@ describe('when we create a valid user via identity HTTP', () => {
 
     const { body, statusCode } = await supertest(app.app)
       .post('/users')
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: 'admin-actor', groups: [EUserGroup.ADMIN] })}`,
+      )
       .send({
         id: params.id,
         fullName: params.fullName,
@@ -48,8 +53,7 @@ describe('when we create a profile with address via HTTP', () => {
 
     const { body, statusCode } = await supertest(app.app)
       .post('/profiles')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: profile.id,
         userId: user.id,

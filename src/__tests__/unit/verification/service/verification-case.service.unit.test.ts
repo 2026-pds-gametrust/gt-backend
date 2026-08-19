@@ -14,6 +14,9 @@ function buildService(overrides: {
   findOpenCaseByListingId?: (
     listingId: string,
   ) => Promise<IVerificationCase | null>;
+  findLatestChangesRequestedCaseByListingId?: (
+    listingId: string,
+  ) => Promise<IVerificationCase | null>;
   updateVerificationCaseById?: (
     id: string,
     data: Partial<IVerificationCase>,
@@ -51,6 +54,20 @@ function buildService(overrides: {
       findOpenCaseByListingId:
         overrides.findOpenCaseByListingId ??
         (async (listingId: string) => openByListing.get(listingId) ?? null),
+      findLatestChangesRequestedCaseByListingId:
+        overrides.findLatestChangesRequestedCaseByListingId ??
+        (async () => null),
+      findCasesByListingIds: async () => [...cases.values()],
+      listModerationQueue: async () => [],
+      countModerationQueue: async () => 0,
+      countModerationQueueStats: async () => ({
+        total: 0,
+        pending: 0,
+        inReview: 0,
+        approved: 0,
+        changesRequested: 0,
+        rejected: 0,
+      }),
       listVerificationCases: async () => [...cases.values()],
     },
     verificationCaseRepositoryWrite: {

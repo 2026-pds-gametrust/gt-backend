@@ -13,6 +13,7 @@ import { ListingEventRepositoryRead } from '../../../../infraestructure/reposito
 import { ListingEventRepositoryWrite } from '../../../../infraestructure/repository/listings/listing-event.repository.write';
 import { ListingRepositoryRead } from '../../../../infraestructure/repository/listings/listing.repository.read';
 import { ListingRepositoryWrite } from '../../../../infraestructure/repository/listings/listing.repository.write';
+import { SealRepositoryRead } from '../../../../infraestructure/repository/verification/seal.repository.read';
 import { validCategoryMock } from '../../../__mocks__/category.mock';
 import { validListingMock } from '../../../__mocks__/listing.mock';
 import { validProductMock } from '../../../__mocks__/product.mock';
@@ -115,6 +116,52 @@ describe('when seller does not exist', () => {
   });
 });
 
+describe('when we create a listing without photos', () => {
+  it('should reject with FIELD_INVALID', async () => {
+    const { user, product } = await seedSellerAndProduct();
+    await expect(
+      listingService.createListing(
+        validListingMock({
+          sellerId: user.id,
+          productId: product.id,
+          media: {
+            photoUrls: [],
+            videoUrl: 'https://cdn.example.com/video1.mp4',
+          },
+        }),
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.photoUrls' },
+    });
+  });
+});
+
+describe('when we create a listing without video', () => {
+  it('should reject with FIELD_INVALID', async () => {
+    const { user, product } = await seedSellerAndProduct();
+    await expect(
+      listingService.createListing(
+        validListingMock({
+          sellerId: user.id,
+          productId: product.id,
+          media: {
+            photoUrls: ['https://cdn.example.com/photo1.jpg'],
+            videoUrl: undefined,
+          },
+        }),
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.videoUrl' },
+    });
+  });
+});
+
 describe('when we create a listing', () => {
   it('should publish listings.listing.created via event publisher', async () => {
     const publisher = {
@@ -129,6 +176,7 @@ describe('when we create a listing', () => {
       productRepositoryRead: new ProductRepositoryRead(),
       priceHistoryRepositoryWrite: new PriceHistoryRepositoryWrite(),
       eventPublisher: publisher,
+      sealRepositoryRead: new SealRepositoryRead(),
     });
 
     const { user, product } = await seedSellerAndProduct();

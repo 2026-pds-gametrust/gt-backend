@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { ITrustScore } from './interfaces/trust-score.interface';
 
 export class TrustScoreServiceEntity implements ITrustScore {
@@ -19,12 +20,8 @@ export class TrustScoreServiceEntity implements ITrustScore {
   }
 
   private validate(trustScore: ITrustScore): void {
-    if (!trustScore.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!trustScore.sellerId?.trim()) {
-      throw new Error('sellerId is required');
-    }
+    requireNonEmptyString(trustScore.id, 'id');
+    requireNonEmptyString(trustScore.sellerId, 'sellerId');
     if (typeof trustScore.score !== 'number' || Number.isNaN(trustScore.score)) {
       throw new Error('score must be a number');
     }

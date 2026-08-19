@@ -5,6 +5,8 @@ import { IEventPublisher } from '../../../../domain/common/messaging/event-publi
 import { IUser } from '../../../../domain/identity/entity/interfaces/user.interface';
 import { UserService } from '../../../../domain/identity/service/user.service';
 import { validUserMock } from '../../../__mocks__/user.mock';
+import { adminActor, ownerActor } from '../../../__mocks__/actor.mock';
+import { EUserStatus } from '../../../../domain/identity/entity/enums/EUserStatus';
 
 function buildService(overrides: {
   users?: Map<string, IUser>;
@@ -104,7 +106,7 @@ describe('when updating a user with email and cpf conflicts', () => {
     await expect(
       service.updateUserById(user.id, {
         userData: { email: 'b@example.com' },
-      }),
+      }, ownerActor(user.id)),
     ).rejects.toMatchObject({
       status: 409,
       errorCode: EErrorCode.RESOURCE_CONFLICT,
@@ -125,7 +127,7 @@ describe('when updating a user with email and cpf conflicts', () => {
     await expect(
       service.updateUserById(user.id, {
         userData: { cpf: cpfOther },
-      }),
+      }, ownerActor(user.id)),
     ).rejects.toMatchObject({
       status: 409,
       errorCode: EErrorCode.RESOURCE_CONFLICT,
@@ -143,7 +145,7 @@ describe('when updating a user to underage birthDate', () => {
     await expect(
       service.updateUserById(user.id, {
         userData: { birthDate: '2015-06-01' },
-      }),
+      }, ownerActor(user.id)),
     ).rejects.toMatchObject({
       status: 400,
       errorCode: EErrorCode.USER_UNDERAGE,
@@ -151,23 +153,46 @@ describe('when updating a user to underage birthDate', () => {
   });
 });
 
-describe('when updating a user without fullName or phone in payload', () => {
-  it('should keep existing fullName and phone', async () => {
+describe('when an owner updates a user without fullName or phone in payload', () => {
+  it('should keep existing identity fields and ignore privileged flags', async () => {
     const user = validUserMock({
       fullName: 'Keep Name',
       phone: '+5511888888888',
+      verified: false,
+      status: EUserStatus.PENDING_VERIFICATION,
     });
     const { service } = buildService({
       users: new Map([[user.id, user]]),
     });
 
-    const updated = await service.updateUserById(user.id, {
-      userData: { verified: true },
-    });
+    const updated = await service.updateUserById(
+      user.id,
+      { userData: { verified: true, status: EUserStatus.ACTIVE } },
+      ownerActor(user.id),
+    );
 
     expect(updated.fullName).toBe('Keep Name');
     expect(updated.phone).toBe('+5511888888888');
+    expect(updated.verified).toBe(false);
+    expect(updated.status).toBe(EUserStatus.PENDING_VERIFICATION);
+  });
+});
+
+describe('when an ADMIN updates verified status via updateUserById', () => {
+  it('should persist privileged fields', async () => {
+    const user = validUserMock({ verified: false });
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+    });
+
+    const updated = await service.updateUserById(
+      user.id,
+      { userData: { verified: true, status: EUserStatus.ACTIVE } },
+      adminActor(),
+    );
+
     expect(updated.verified).toBe(true);
+    expect(updated.status).toBe(EUserStatus.ACTIVE);
   });
 });
 
@@ -180,7 +205,11 @@ describe('when updateUserById write returns null', () => {
     });
 
     await expect(
-      service.updateUserById(user.id, { userData: { verified: true } }),
+      service.updateUserById(
+        user.id,
+        { userData: { fullName: 'Updated' } },
+        ownerActor(user.id),
+      ),
     ).rejects.toMatchObject({
       status: 404,
       errorCode: EErrorCode.RESOURCE_NOT_FOUND,

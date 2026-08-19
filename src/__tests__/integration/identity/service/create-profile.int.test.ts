@@ -99,6 +99,8 @@ describe('when we update a profile', () => {
       profileRepositoryWrite: new ProfileRepositoryWrite(),
       userRepositoryRead: new UserRepositoryRead(),
       eventPublisher: publisher,
+      cepLookup: { lookup: async () => null },
+      geocoder: { geocode: async () => null },
     });
 
     await service.updateProfileById(

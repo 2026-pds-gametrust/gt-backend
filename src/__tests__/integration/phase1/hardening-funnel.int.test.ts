@@ -1,3 +1,5 @@
+import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../jest/setup-integration-tests';
@@ -87,7 +89,7 @@ describe('when Phase 1 hardening funnel runs end-to-end', () => {
     const favoriteId = new Types.ObjectId().toHexString();
     const favorited = await supertest(app.app)
       .post('/favorites')
-      .set('x-user-id', buyer.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: buyer.id, groups: [EUserGroup.APP_USER] })}`)
       .send({
         id: favoriteId,
         userId: 'spoofed-other-user',

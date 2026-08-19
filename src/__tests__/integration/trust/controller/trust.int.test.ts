@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -8,7 +9,7 @@ describe('when we append trust events and recompute via HTTP', () => {
     const sellerId = new Types.ObjectId().toHexString();
     const created = await supertest(app.app)
       .post('/trust-events')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: new Types.ObjectId().toHexString(),
         sellerId,
@@ -20,7 +21,7 @@ describe('when we append trust events and recompute via HTTP', () => {
 
     const recomputed = await supertest(app.app)
       .post(`/trust-scores/${sellerId}/recompute`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send();
     expect(recomputed.statusCode).toBe(200);
     expect(recomputed.body.score).toBe(10);

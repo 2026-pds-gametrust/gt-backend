@@ -6,7 +6,10 @@ import { ListingEventRepositoryRead } from '../../infraestructure/repository/lis
 import { ListingEventRepositoryWrite } from '../../infraestructure/repository/listings/listing-event.repository.write';
 import { ListingRepositoryRead } from '../../infraestructure/repository/listings/listing.repository.read';
 import { ListingRepositoryWrite } from '../../infraestructure/repository/listings/listing.repository.write';
+import { VerificationCaseRepositoryRead } from '../../infraestructure/repository/verification/verification-case.repository.read';
+import { SealRepositoryRead } from '../../infraestructure/repository/verification/seal.repository.read';
 import { EventPublisherFactory } from './messaging/event-publisher.factory';
+import { MediaAssetServiceFactory } from './media-asset.service.factory';
 
 export class ListingServiceFactory {
   static create() {
@@ -19,6 +22,9 @@ export class ListingServiceFactory {
       productRepositoryRead: new ProductRepositoryRead(),
       priceHistoryRepositoryWrite: new PriceHistoryRepositoryWrite(),
       eventPublisher: EventPublisherFactory.create(),
+      sealRepositoryRead: new SealRepositoryRead(),
+      mediaClient: MediaAssetServiceFactory.create(),
+      verificationCaseRepositoryRead: new VerificationCaseRepositoryRead(),
     });
   }
 }

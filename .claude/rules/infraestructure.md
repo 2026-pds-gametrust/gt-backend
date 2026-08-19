@@ -12,4 +12,4 @@ paths:
 - **Forbidden in repository:** business rules (404/409, uniqueness, state transitions, instantiate `*ServiceEntity`). Return `null` if not found; **service** throws `RESOURCE_NOT_FOUND` / `RESOURCE_CONFLICT`.
 - **Allowed:** CRUD/query, mapping, `try/catch` → `DATABASE_ERROR` + log.
 - ❌ example: `if (!doc) throw { errorCode: EErrorCode.RESOURCE_NOT_FOUND }` in repo — see [business-rules-layers.md](business-rules-layers.md).
-- SQS messaging (optional): when added, put implementations in `messaging/<event>/`; contracts stay in **domain**.
+- Kafka (optional): when added, put implementations in `messaging/<event>/`; contracts stay in **domain**.

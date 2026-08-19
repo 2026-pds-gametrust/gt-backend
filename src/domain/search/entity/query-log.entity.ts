@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { IQueryLog } from './interfaces/query-log.interface';
 
 export class QueryLogServiceEntity implements IQueryLog {
@@ -19,7 +20,7 @@ export class QueryLogServiceEntity implements IQueryLog {
   }
 
   private validate(log: IQueryLog): void {
-    if (!log.id?.trim()) throw new Error('id is required');
+    requireNonEmptyString(log.id, 'id');
     if (log.query == null) throw new Error('query is required');
     if (log.resultCount == null || log.resultCount < 0) {
       throw new Error('resultCount must be >= 0');

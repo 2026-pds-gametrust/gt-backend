@@ -44,17 +44,42 @@ describe('when <context>', () => {
 
 Do not use SUT-name-only describes for new tests.
 
+## Boundary cases (mandatory when inputs have edges)
+
+For values with a defined expected result or limit, cover **exact**, **just below**, and **just above** — not only the happy path.
+
+```ts
+// ✅ Pattern
+describe('when adding 1 and 1', () => {
+  it('should return 2', async () => { /* exact */ });
+});
+describe('when adding 1 and 0', () => {
+  it('should return 1', async () => { /* below */ });
+});
+describe('when adding 1 and 2', () => {
+  it('should return 3', async () => { /* above */ });
+});
+
+// ❌ Anti-pattern — only the exact case
+describe('when adding 1 and 1', () => {
+  it('should return 2', async () => { /* ... */ });
+});
+```
+
+Apply the same triad to domain limits (max length, thresholds, min/max counts, status cutoffs).
+
 ## Scenario checklist
 
 For each operation under test, cover applicable cases:
 
 - Happy path (result + relevant side effects)
+- **Boundary** — exact, just below, just above when the input/result has a defined edge
 - Invalid input / entity validation
 - Not found (`404` / `RESOURCE_NOT_FOUND`) — assert in **Service**, not Repository
 - Conflict / uniqueness (`409`) — **Service**
 - Auth / permission when the route uses `authorizeByGroup`
 - Invalid state transition when a state machine exists
-- Idempotency / retry when design or messaging requires it
+- Idempotency / retry when design or Kafka requires it
 - Event emitted on success; event **not** emitted when persistence fails
 - Repository: `null` vs found; adapter mapping; DB error → `DATABASE_ERROR`
 - Controller: HTTP status + body; error translation; do not retest every service branch
@@ -71,7 +96,7 @@ For each operation under test, cover applicable cases:
 ### Do — prefer `jest.spyOn`
 
 - External services (HTTP client, SDK, email, third-party APIs)
-- event producers / handlers (injected interface): spy on `produce` / handler
+- Kafka producers / handlers (injected interface): spy on `produce` / handler
 - Clock / UUID only when the assertion needs a fixed value
 
 ## By layer
@@ -89,7 +114,7 @@ For each operation under test, cover applicable cases:
 - **Do not** mock the Repository.
 - Data fixture with `validUserMock` or `UserModel.create` for conflict scenarios.
 - Assert errors with `errorCode` + `ErrorCatalog`.
-- Spy external / SQS dependencies with `jest.spyOn` when present.
+- Spy external / Kafka dependencies with `jest.spyOn` when present.
 - Reference: [`create-user.int.test.ts`](../../../examples/canonical-user/src/__tests__/integration/user/service/create-user.int.test.ts) (service).
 
 ### Repository (persistence)
@@ -117,9 +142,10 @@ For each operation under test, cover applicable cases:
 
 - [ ] New behavior has a test in the layer where the logic lives
 - [ ] `describe('when …')` / `it('should …')` on every new suite
+- [ ] Boundary cases (exact / just below / just above) when inputs have edges
 - [ ] Controller: happy path + at least one relevant HTTP error
 - [ ] Service: conflict / not found when applicable; Repository **not** mocked
-- [ ] External / SQS interactions use `jest.spyOn` when applicable
+- [ ] External / Kafka interactions use `jest.spyOn` when applicable
 - [ ] Repository: read and write in correct files/folders
 - [ ] `yarn test` and `yarn test:coverage` pass
 
@@ -127,5 +153,5 @@ For each operation under test, cover applicable cases:
 
 - New endpoint: [skill-add-http-endpoint](../skill-add-http-endpoint/SKILL.md)
 - Errors: [skill-domain-errors](../skill-domain-errors/SKILL.md)
-- SQS: [skill-sqs-messaging](../skill-sqs-messaging/SKILL.md)
+- Kafka: [skill-kafka-messaging](../skill-kafka-messaging/SKILL.md)
 - QA plan/report: [skill-quality-assurance](../skill-quality-assurance/SKILL.md)

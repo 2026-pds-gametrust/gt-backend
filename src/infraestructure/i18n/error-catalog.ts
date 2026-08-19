@@ -28,6 +28,11 @@ export const ErrorCatalog: Catalog<EErrorCode> = {
     en: 'Invalid username or password.',
     es: 'Usuario o contraseña inválidos.',
   },
+  [EErrorCode.AUTH_UNAUTHORIZED]: {
+    'pt-BR': 'Acesso não autorizado. Envie um token Bearer válido.',
+    en: 'Unauthorized. Send a valid Bearer token.',
+    es: 'No autorizado. Envíe un token Bearer válido.',
+  },
   [EErrorCode.SERVICE_USER_UNKNOWN]: {
     'pt-BR': 'Usuário não encontrado. Verifique se os dados estão corretos.',
     en: 'User not found. Please check that the data is correct.',

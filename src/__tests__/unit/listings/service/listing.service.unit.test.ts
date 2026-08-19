@@ -19,10 +19,17 @@ function buildService(overrides: {
   listings?: Map<string, IListing>;
   users?: Map<string, IUser>;
   products?: Map<string, IProduct>;
+  mediaClient?: {
+    getReadyAsset: jest.Mock;
+    resolvePublicVariantUrls: jest.Mock;
+    resolvePublicVideoUrl: jest.Mock;
+    assertAttachableAsset: jest.Mock;
+  };
   updateListingById?: (
     id: string,
     data: Partial<IListing>,
   ) => Promise<IListing | null>;
+  sealRepositoryRead?: Record<string, unknown>;
 } = {}) {
   const listings = overrides.listings ?? new Map<string, IListing>();
   const users = overrides.users ?? new Map<string, IUser>();
@@ -37,6 +44,51 @@ function buildService(overrides: {
     listingRepositoryRead: {
       findListingById: async (id: string) => listings.get(id) ?? null,
       listListings: async () => [...listings.values()],
+      listPublicListings: async ({
+        limit,
+        offset,
+      }: {
+        limit: number;
+        offset: number;
+      }) =>
+        [...listings.values()]
+          .filter((listing) => listing.status === EListingStatus.PUBLISHED)
+          .slice(offset, offset + limit),
+      countPublicListings: async () =>
+        [...listings.values()].filter(
+          (listing) => listing.status === EListingStatus.PUBLISHED,
+        ).length,
+      listSellerListings: async ({
+        sellerId,
+        status,
+        limit,
+        offset,
+      }: {
+        sellerId: string;
+        status?: EListingStatus;
+        limit: number;
+        offset: number;
+      }) => {
+        let items = [...listings.values()].filter(
+          (listing) => listing.sellerId === sellerId,
+        );
+        if (status) {
+          items = items.filter((listing) => listing.status === status);
+        }
+        return items.slice(offset, offset + limit);
+      },
+      countSellerListings: async (
+        sellerId: string,
+        status?: EListingStatus,
+      ) => {
+        let items = [...listings.values()].filter(
+          (listing) => listing.sellerId === sellerId,
+        );
+        if (status) {
+          items = items.filter((listing) => listing.status === status);
+        }
+        return items.length;
+      },
     },
     listingRepositoryWrite: {
       createListing: async (listing: IListing) => {
@@ -82,6 +134,14 @@ function buildService(overrides: {
       },
     },
     eventPublisher: publisher,
+    mediaClient: overrides.mediaClient,
+    sealRepositoryRead: {
+      findSealById: async () => null,
+      findActiveSealByListingId: async () => null,
+      listSealsByListingId: async () => [],
+      listActiveSealsByListingIds: async () => [],
+      ...(overrides.sealRepositoryRead as object),
+    },
   } as never);
 
   return { service, listings, users, products, publisher, priceHistory, events };
@@ -151,6 +211,210 @@ describe('when creating a listing for a missing product', () => {
       errorCode: EErrorCode.RESOURCE_NOT_FOUND,
       details: { productId: 'missing' },
     });
+  });
+});
+
+describe('when creating a listing without photos', () => {
+  it('should reject with FIELD_INVALID on media.photoUrls', async () => {
+    const user = validUserMock();
+    const product = validProductMock();
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      products: new Map([[product.id, product]]),
+    });
+
+    await expect(
+      service.createListing(
+        validListingMock({
+          sellerId: user.id,
+          productId: product.id,
+          media: {
+            photoUrls: [],
+            videoUrl: 'https://cdn.example.com/video1.mp4',
+          },
+        }),
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.photoUrls' },
+    });
+  });
+});
+
+describe('when creating a listing without video', () => {
+  it('should reject with FIELD_INVALID on media.videoUrl', async () => {
+    const user = validUserMock();
+    const product = validProductMock();
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      products: new Map([[product.id, product]]),
+    });
+
+    await expect(
+      service.createListing(
+        validListingMock({
+          sellerId: user.id,
+          productId: product.id,
+          media: {
+            photoUrls: ['https://cdn.example.com/photo1.jpg'],
+            videoUrl: undefined,
+          },
+        }),
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.videoUrl' },
+    });
+  });
+});
+
+describe('when creating a listing with a video id in assetIds', () => {
+  it('should reject with FIELD_INVALID', async () => {
+    const user = validUserMock();
+    const product = validProductMock();
+    const mediaClient = {
+      getReadyAsset: jest.fn(),
+      resolvePublicVariantUrls: jest.fn(),
+      resolvePublicVideoUrl: jest.fn(),
+      assertAttachableAsset: jest.fn().mockResolvedValue({
+        id: 'video-as-photo',
+        contentType: 'video/mp4',
+        purpose: 'LISTING',
+        ownerId: user.id,
+      }),
+    };
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      products: new Map([[product.id, product]]),
+      mediaClient,
+    });
+
+    await expect(
+      service.createListing(
+        validListingMock({
+          sellerId: user.id,
+          productId: product.id,
+          media: {
+            photoUrls: [],
+            assetIds: ['video-as-photo'],
+            videoUrl: 'https://cdn.example.com/video1.mp4',
+          },
+        }),
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.assetIds' },
+    });
+  });
+});
+
+describe('when creating a listing with an image id in videoAssetId', () => {
+  it('should reject with FIELD_INVALID', async () => {
+    const user = validUserMock();
+    const product = validProductMock();
+    const mediaClient = {
+      getReadyAsset: jest.fn(),
+      resolvePublicVariantUrls: jest.fn().mockResolvedValue([
+        'https://cdn.example.com/derived.webp',
+      ]),
+      resolvePublicVideoUrl: jest.fn(),
+      assertAttachableAsset: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'photo-1',
+          contentType: 'image/jpeg',
+          purpose: 'LISTING',
+          ownerId: user.id,
+        })
+        .mockResolvedValueOnce({
+          id: 'image-as-video',
+          contentType: 'image/jpeg',
+          purpose: 'LISTING',
+          ownerId: user.id,
+        }),
+    };
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      products: new Map([[product.id, product]]),
+      mediaClient,
+    });
+
+    await expect(
+      service.createListing(
+        validListingMock({
+          sellerId: user.id,
+          productId: product.id,
+          media: {
+            photoUrls: [],
+            assetIds: ['photo-1'],
+            videoAssetId: 'image-as-video',
+          },
+        }),
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.videoAssetId' },
+    });
+  });
+});
+
+describe('when creating a listing with READY photo and video assets', () => {
+  it('should derive photoUrls and videoUrl', async () => {
+    const user = validUserMock();
+    const product = validProductMock();
+    const mediaClient = {
+      getReadyAsset: jest.fn(),
+      resolvePublicVariantUrls: jest
+        .fn()
+        .mockResolvedValue(['https://media.local/photo.webp']),
+      resolvePublicVideoUrl: jest
+        .fn()
+        .mockResolvedValue('https://media.local/video.mp4'),
+      assertAttachableAsset: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'photo-1',
+          contentType: 'image/jpeg',
+          purpose: 'LISTING',
+          ownerId: user.id,
+        })
+        .mockResolvedValueOnce({
+          id: 'video-1',
+          contentType: 'video/mp4',
+          purpose: 'LISTING',
+          ownerId: user.id,
+        }),
+    };
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      products: new Map([[product.id, product]]),
+      mediaClient,
+    });
+
+    const created = await service.createListing(
+      validListingMock({
+        sellerId: user.id,
+        productId: product.id,
+        media: {
+          photoUrls: ['https://cdn.example.com/ignored.jpg'],
+          assetIds: ['photo-1'],
+          videoAssetId: 'video-1',
+        },
+      }),
+      sellerActor(user.id),
+    );
+
+    expect(created.media.photoUrls).toEqual(['https://media.local/photo.webp']);
+    expect(created.media.videoUrl).toBe('https://media.local/video.mp4');
+    expect(created.media.videoAssetId).toBe('video-1');
   });
 });
 
@@ -315,6 +579,30 @@ describe('when submitting without photos or shipping modes', () => {
       status: 400,
       errorCode: EErrorCode.FIELD_INVALID,
       details: { field: 'media.photoUrls' },
+    });
+  });
+
+  it('should reject when videoUrl is missing', async () => {
+    const user = validUserMock();
+    const listing = validListingMock({
+      sellerId: user.id,
+      media: {
+        photoUrls: ['https://cdn.example.com/photo1.jpg'],
+        videoUrl: undefined,
+      },
+      shipping: { modes: [EShippingMode.PICKUP] },
+    });
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      listings: new Map([[listing.id, listing]]),
+    });
+
+    await expect(
+      service.submitListing(listing.id, sellerActor(user.id)),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.videoUrl' },
     });
   });
 

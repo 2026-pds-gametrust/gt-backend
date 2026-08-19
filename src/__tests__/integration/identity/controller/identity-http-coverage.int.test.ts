@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -8,7 +9,13 @@ import { validUserMock } from '../../../__mocks__/user.mock';
 describe('when identity HTTP routes are exercised', () => {
   it('should cover user verify and profile read list update flows', async () => {
     const user = validUserMock();
-    const createdUser = await supertest(app.app).post('/users').send({
+    const createdUser = await supertest(app.app)
+      .post('/users')
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: 'admin-actor', groups: [EUserGroup.ADMIN] })}`,
+      )
+      .send({
       id: user.id,
       fullName: user.fullName,
       email: user.email,
@@ -20,28 +27,35 @@ describe('when identity HTTP routes are exercised', () => {
 
     const listedUsers = await supertest(app.app)
       .get('/users')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor');
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
     expect(listedUsers.statusCode).toBe(200);
 
-    const gotUser = await supertest(app.app).get(`/users/${user.id}`);
+    const gotUser = await supertest(app.app)
+      .get(`/users/${user.id}`)
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`,
+      );
     expect(gotUser.statusCode).toBe(200);
 
     const verified = await supertest(app.app)
       .post(`/users/${user.id}/verify`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor');
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
     expect(verified.statusCode).toBe(200);
 
     const updatedUser = await supertest(app.app)
       .put(`/users/${user.id}`)
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`,
+      )
       .send({ fullName: 'Updated Name Here' });
     expect(updatedUser.statusCode).toBe(200);
 
     const profile = validProfileMock({ userId: user.id });
     const createdProfile = await supertest(app.app)
       .post('/profiles')
-      .set('x-user-id', user.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
       .send({
         id: profile.id,
         userId: user.id,
@@ -53,8 +67,7 @@ describe('when identity HTTP routes are exercised', () => {
 
     const listedProfiles = await supertest(app.app)
       .get('/profiles')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor');
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
     expect(listedProfiles.statusCode).toBe(200);
 
     const byUser = await supertest(app.app).get(`/profiles/by-user/${user.id}`);
@@ -65,14 +78,20 @@ describe('when identity HTTP routes are exercised', () => {
 
     const updatedProfile = await supertest(app.app)
       .put(`/profiles/${profile.id}`)
-      .set('x-user-id', user.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
       .send({ displayName: 'New Display' });
     expect(updatedProfile.statusCode).toBe(200);
   });
 
   it('should delete a user via HTTP', async () => {
     const user = validUserMock();
-    await supertest(app.app).post('/users').send({
+    await supertest(app.app)
+      .post('/users')
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: 'admin-actor', groups: [EUserGroup.ADMIN] })}`,
+      )
+      .send({
       id: user.id,
       fullName: user.fullName,
       email: user.email,
@@ -81,7 +100,12 @@ describe('when identity HTTP routes are exercised', () => {
       birthDate: user.birthDate,
     });
 
-    const deleted = await supertest(app.app).delete(`/users/${user.id}`);
+    const deleted = await supertest(app.app)
+      .delete(`/users/${user.id}`)
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`,
+      );
     expect(deleted.statusCode).toBe(200);
     expect(deleted.body).toMatchObject({
       message: 'User deleted successfully',
@@ -89,9 +113,13 @@ describe('when identity HTTP routes are exercised', () => {
   });
 
   it('should return 404 for missing user', async () => {
-    const response = await supertest(app.app).get(
-      `/users/${new Types.ObjectId().toHexString()}`,
-    );
+    const missingId = new Types.ObjectId().toHexString();
+    const response = await supertest(app.app)
+      .get(`/users/${missingId}`)
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: 'admin-actor', groups: [EUserGroup.ADMIN] })}`,
+      );
     expect(response.statusCode).toBe(404);
   });
 });

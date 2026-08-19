@@ -7,7 +7,9 @@ import { IPriceHistoryRepositoryWrite } from '../../catalog/repository/price-his
 import { IProductRepositoryRead } from '../../catalog/repository/product.repository.read';
 import {
   assertBackofficeAdminOrSystem,
+  assertActorPresent,
   assertOwnerOrAdmin,
+  isBackofficeOrAdmin,
   systemActorContext,
 } from '../../common/auth/actor-authorization';
 import { EErrorCode } from '../../common/errors/enums/EErrorCode';
@@ -22,15 +24,37 @@ import { ListingEventServiceEntity } from '../entity/listing-event.entity';
 import { ListingServiceEntity } from '../entity/listing.entity';
 import { EListingStatus } from '../entity/enums/EListingStatus';
 import { EShippingMode } from '../entity/enums/EShippingMode';
-import { IListing } from '../entity/interfaces/listing.interface';
+import {
+  IListing,
+  IListingMedia,
+} from '../entity/interfaces/listing.interface';
 import { IListingEvent } from '../entity/interfaces/listing-event.interface';
 import { IListingEventRepositoryRead } from '../repository/listing-event.repository.read';
 import { IListingEventRepositoryWrite } from '../repository/listing-event.repository.write';
 import { IListingRepositoryRead } from '../repository/listing.repository.read';
 import { IListingRepositoryWrite } from '../repository/listing.repository.write';
+import { IVerificationCase } from '../../verification/entity/interfaces/verification-case.interface';
+import { EVerificationCaseStatus } from '../../verification/entity/enums/EVerificationCaseStatus';
+import { IVerificationCaseRepositoryRead } from '../../verification/repository/verification-case.repository.read';
+import { assertRequiredChangesApplied } from '../../verification/revision/revision-change.validation';
+import { ISealRepositoryRead } from '../../verification/repository/seal.repository.read';
+import {
+  ISellerListing,
+  ISellerVerificationSummary,
+  SELLER_LISTINGS_DEFAULT_LIMIT,
+  SELLER_LISTINGS_MAX_LIMIT,
+} from '../entity/interfaces/seller-listing.interface';
+import { IMediaClient } from '../../media/client/media.client';
+import { EMediaPurpose } from '../../media/entity/enums/EMediaPurpose';
+import {
+  isImageContentType,
+  isVideoContentType,
+} from '../../media/entity/media-asset.entity';
 import {
   IListingService,
   IParamsCreateListing,
+  IParamsListListingsForViewer,
+  IParamsListMyListings,
   IParamsListingService,
   IParamsUpdateListing,
 } from './listing.service.interface';
@@ -40,6 +64,7 @@ const ALLOWED_TRANSITIONS: Record<EListingStatus, EListingStatus[]> = {
   [EListingStatus.SUBMITTED]: [
     EListingStatus.PUBLISHED,
     EListingStatus.DRAFT,
+    EListingStatus.REJECTED,
   ],
   [EListingStatus.PUBLISHED]: [
     EListingStatus.PAUSED,
@@ -53,6 +78,7 @@ const ALLOWED_TRANSITIONS: Record<EListingStatus, EListingStatus[]> = {
     EListingStatus.PUBLISHED,
   ],
   [EListingStatus.SOLD]: [],
+  [EListingStatus.REJECTED]: [],
 };
 
 export class ListingService implements IListingService {
@@ -64,6 +90,9 @@ export class ListingService implements IListingService {
   private readonly productRepositoryRead: IProductRepositoryRead;
   private readonly priceHistoryRepositoryWrite: IPriceHistoryRepositoryWrite;
   private readonly eventPublisher: IEventPublisher;
+  private readonly sealRepositoryRead: ISealRepositoryRead;
+  private readonly mediaClient?: IMediaClient;
+  private readonly verificationCaseRepositoryRead?: IVerificationCaseRepositoryRead;
 
   constructor({
     listingRepositoryRead,
@@ -74,6 +103,9 @@ export class ListingService implements IListingService {
     productRepositoryRead,
     priceHistoryRepositoryWrite,
     eventPublisher,
+    sealRepositoryRead,
+    mediaClient,
+    verificationCaseRepositoryRead,
   }: IParamsListingService) {
     this.listingRepositoryRead = listingRepositoryRead;
     this.listingRepositoryWrite = listingRepositoryWrite;
@@ -83,6 +115,9 @@ export class ListingService implements IListingService {
     this.productRepositoryRead = productRepositoryRead;
     this.priceHistoryRepositoryWrite = priceHistoryRepositoryWrite;
     this.eventPublisher = eventPublisher;
+    this.sealRepositoryRead = sealRepositoryRead;
+    this.mediaClient = mediaClient;
+    this.verificationCaseRepositoryRead = verificationCaseRepositoryRead;
   }
 
   async createListing(
@@ -92,6 +127,11 @@ export class ListingService implements IListingService {
     assertOwnerOrAdmin(actor, params.sellerId);
     await this.assertSellerExists(params.sellerId);
     await this.assertProductExists(params.productId);
+    const media = await this.resolveListingMedia(
+      params.media,
+      params.sellerId,
+    );
+    this.assertCreateMediaReady(media);
 
     const entity = new ListingServiceEntity({
       id: params.id,
@@ -104,7 +144,7 @@ export class ListingService implements IListingService {
       listPriceCents: params.listPriceCents,
       currency: params.currency ?? 'BRL',
       attributes: params.attributes,
-      media: params.media,
+      media,
       shipping: params.shipping,
       locationApprox: params.locationApprox,
       warranty: params.warranty,
@@ -144,7 +184,239 @@ export class ListingService implements IListingService {
     return created;
   }
 
-  async getListingById(id: string): Promise<IListing> {
+  async getListingById(id: string, actor?: IActorContext): Promise<IListing> {
+    const listing = await this.loadListingById(id);
+    await this.assertListingVisible(listing, actor);
+    return listing;
+  }
+
+  private async assertListingVisible(
+    listing: IListing,
+    actor?: IActorContext,
+  ): Promise<void> {
+    if (actor === undefined) {
+      return;
+    }
+    if (
+      isBackofficeOrAdmin(actor) ||
+      (actor.actorId?.trim() && actor.actorId === listing.sellerId)
+    ) {
+      return;
+    }
+    if (await this.isPubliclyVisible(listing)) {
+      return;
+    }
+    throw {
+      status: 404,
+      errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+      message: 'Listing not found',
+      details: { id: listing.id },
+    } as IThrowedError;
+  }
+
+  private async isPubliclyVisible(listing: IListing): Promise<boolean> {
+    if (listing.status !== EListingStatus.PUBLISHED) {
+      return false;
+    }
+    const activeSeal =
+      await this.sealRepositoryRead.findActiveSealByListingId(listing.id);
+    return activeSeal !== null;
+  }
+
+  private async filterPubliclyVisible(
+    listings: IListing[],
+  ): Promise<IListing[]> {
+    if (listings.length === 0) {
+      return [];
+    }
+    const published = listings.filter(
+      (listing) => listing.status === EListingStatus.PUBLISHED,
+    );
+    if (published.length === 0) {
+      return [];
+    }
+    const seals = await this.sealRepositoryRead.listActiveSealsByListingIds(
+      published.map((listing) => listing.id),
+    );
+    const sealedListingIds = new Set(seals.map((seal) => seal.listingId));
+    return published.filter((listing) => sealedListingIds.has(listing.id));
+  }
+
+  private parsePagination(params: IParamsListMyListings): {
+    limit: number;
+    offset: number;
+  } {
+    const requestedLimit = Number(params.limit ?? SELLER_LISTINGS_DEFAULT_LIMIT);
+    if (!Number.isFinite(requestedLimit) || requestedLimit <= 0) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message: 'limit must be a positive number',
+      } as IThrowedError;
+    }
+    const limit = Math.min(
+      Math.floor(requestedLimit),
+      SELLER_LISTINGS_MAX_LIMIT,
+    );
+
+    const requestedOffset = Number(params.offset ?? 0);
+    if (!Number.isFinite(requestedOffset) || requestedOffset < 0) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message: 'offset must be a non-negative number',
+      } as IThrowedError;
+    }
+    const offset = Math.floor(requestedOffset);
+
+    return { limit, offset };
+  }
+
+  private parseListingStatusFilter(
+    status?: EListingStatus | string,
+  ): EListingStatus | undefined {
+    if (status === undefined || status === '') {
+      return undefined;
+    }
+    const normalized = String(status).trim().toUpperCase();
+    const allowed = Object.values(EListingStatus) as string[];
+    if (!allowed.includes(normalized)) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message: 'status filter is invalid',
+        details: { status },
+      } as IThrowedError;
+    }
+    return normalized as EListingStatus;
+  }
+
+  private async loadLatestVerificationByListingIds(
+    listingIds: string[],
+  ): Promise<Map<string, ISellerVerificationSummary>> {
+    const result = new Map<string, ISellerVerificationSummary>();
+    if (!this.verificationCaseRepositoryRead || listingIds.length === 0) {
+      return result;
+    }
+
+    const cases =
+      await this.verificationCaseRepositoryRead.findCasesByListingIds(
+        listingIds,
+      );
+    const latestByListing = new Map<string, IVerificationCase>();
+    for (const verificationCase of cases) {
+      if (latestByListing.has(verificationCase.listingId)) {
+        continue;
+      }
+      latestByListing.set(verificationCase.listingId, verificationCase);
+    }
+
+    for (const [listingId, verificationCase] of latestByListing) {
+      result.set(listingId, this.toSellerVerificationSummary(verificationCase));
+    }
+
+    return result;
+  }
+
+  private toSellerVerificationSummary(
+    verificationCase: IVerificationCase,
+  ): ISellerVerificationSummary {
+    const summary: ISellerVerificationSummary = {
+      id: verificationCase.id,
+      status: verificationCase.status,
+      updatedAt: verificationCase.updatedAt ?? verificationCase.createdAt,
+    };
+    if (verificationCase.previousCaseId?.trim()) {
+      summary.previousCaseId = verificationCase.previousCaseId.trim();
+    }
+    if (
+      verificationCase.status === EVerificationCaseStatus.REJECTED &&
+      verificationCase.decisionReason?.trim()
+    ) {
+      summary.decisionReason = verificationCase.decisionReason.trim();
+    }
+    if (
+      verificationCase.status === EVerificationCaseStatus.CHANGES_REQUESTED
+    ) {
+      if (verificationCase.decisionReason?.trim()) {
+        summary.decisionReason = verificationCase.decisionReason.trim();
+      }
+      if (verificationCase.requiredChanges?.length) {
+        summary.requiredChanges = verificationCase.requiredChanges;
+      }
+    }
+    return summary;
+  }
+
+  async listPublicListings(params: IParamsListMyListings = {}) {
+    const { limit, offset } = this.parsePagination(params);
+    const published = await this.listingRepositoryRead.listListings({
+      status: EListingStatus.PUBLISHED,
+    });
+    const verified = await this.filterPubliclyVisible(published);
+    const total = verified.length;
+    const items = verified.slice(offset, offset + limit);
+    return { items, total, limit, offset };
+  }
+
+  async listListingsForViewer(
+    actor: IActorContext,
+    options: IParamsListListingsForViewer = {},
+  ): Promise<IListing[]> {
+    const sellerId = options.sellerId?.trim();
+    if (sellerId) {
+      const listings = await this.listListings({ sellerId });
+      if (
+        isBackofficeOrAdmin(actor) ||
+        (actor.actorId?.trim() && actor.actorId === sellerId)
+      ) {
+        return listings;
+      }
+      return this.filterPubliclyVisible(listings);
+    }
+
+    const published = await this.listListings({
+      status: EListingStatus.PUBLISHED,
+    });
+    return this.filterPubliclyVisible(published);
+  }
+
+  async listMyListings(
+    actor: IActorContext,
+    params: IParamsListMyListings = {},
+  ) {
+    assertActorPresent(actor);
+    const status = this.parseListingStatusFilter(params.status);
+    const { limit, offset } = this.parsePagination(params);
+    const sellerId = actor.actorId;
+
+    const [listings, total] = await Promise.all([
+      this.listingRepositoryRead.listSellerListings({
+        sellerId,
+        status,
+        limit,
+        offset,
+      }),
+      this.listingRepositoryRead.countSellerListings(sellerId, status),
+    ]);
+
+    const verificationByListing = await this.loadLatestVerificationByListingIds(
+      listings.map((listing) => listing.id),
+    );
+
+    const items: ISellerListing[] = listings.map((listing) => ({
+      ...listing,
+      verificationCase: verificationByListing.get(listing.id),
+    }));
+
+    return { items, total, limit, offset };
+  }
+
+  async listListings(filter: Partial<IListing> = {}): Promise<IListing[]> {
+    return this.listingRepositoryRead.listListings(filter);
+  }
+
+  private async loadListingById(id: string): Promise<IListing> {
     const listing = await this.listingRepositoryRead.findListingById(id);
     if (!listing) {
       throw {
@@ -157,16 +429,12 @@ export class ListingService implements IListingService {
     return listing;
   }
 
-  async listListings(filter: Partial<IListing> = {}): Promise<IListing[]> {
-    return this.listingRepositoryRead.listListings(filter);
-  }
-
   async updateListingById(
     id: string,
     params: IParamsUpdateListing,
     actor: IActorContext,
   ): Promise<IListing> {
-    const existing = await this.getListingById(id);
+    const existing = await this.loadListingById(id);
     assertOwnerOrAdmin(actor, existing.sellerId);
 
     if (
@@ -181,9 +449,17 @@ export class ListingService implements IListingService {
       } as IThrowedError;
     }
 
+    const listingData = { ...params.listingData };
+    if (listingData.media) {
+      listingData.media = await this.resolveListingMedia(
+        listingData.media,
+        existing.sellerId,
+      );
+    }
+
     const candidate = new ListingServiceEntity({
       ...existing,
-      ...params.listingData,
+      ...listingData,
       quantity: 1,
       status: existing.status,
     });
@@ -217,14 +493,31 @@ export class ListingService implements IListingService {
       await this.appendListingPrice(updated, EPriceHistorySource.MANUAL);
     }
 
+    await this.eventPublisher.publish(
+      createEventEnvelope({
+        eventId: randomUUID(),
+        eventType: 'listings.listing.updated',
+        aggregateId: updated.id,
+        producerModule: 'listings',
+        correlationId: actor.correlationId ?? randomUUID(),
+        payload: {
+          listingId: updated.id,
+          productId: updated.productId,
+          sellerId: updated.sellerId,
+          status: updated.status,
+        },
+      }),
+    );
+
     return updated;
   }
 
   async submitListing(id: string, actor: IActorContext): Promise<IListing> {
-    const existing = await this.getListingById(id);
+    const existing = await this.loadListingById(id);
     assertOwnerOrAdmin(actor, existing.sellerId);
     this.assertTransition(existing.status, EListingStatus.SUBMITTED);
     this.assertSubmitReady(existing);
+    await this.assertRevisionChangesApplied(existing);
 
     return this.transitionStatus(
       existing,
@@ -236,7 +529,7 @@ export class ListingService implements IListingService {
 
   async publishListing(id: string, actor: IActorContext): Promise<IListing> {
     assertBackofficeAdminOrSystem(actor);
-    const existing = await this.getListingById(id);
+    const existing = await this.loadListingById(id);
     this.assertTransition(existing.status, EListingStatus.PUBLISHED);
     this.assertPublishReady(existing);
 
@@ -256,7 +549,7 @@ export class ListingService implements IListingService {
   }
 
   async pauseListing(id: string, actor: IActorContext): Promise<IListing> {
-    const existing = await this.getListingById(id);
+    const existing = await this.loadListingById(id);
     assertOwnerOrAdmin(actor, existing.sellerId);
     this.assertTransition(existing.status, EListingStatus.PAUSED);
     return this.transitionStatus(
@@ -267,8 +560,11 @@ export class ListingService implements IListingService {
     );
   }
 
-  async listEvents(listingId: string): Promise<IListingEvent[]> {
-    await this.getListingById(listingId);
+  async listEvents(
+    listingId: string,
+    actor?: IActorContext,
+  ): Promise<IListingEvent[]> {
+    await this.getListingById(listingId, actor);
     return this.listingEventRepositoryRead.listByListingId(listingId);
   }
 
@@ -315,6 +611,128 @@ export class ListingService implements IListingService {
       listingId,
       status: listing.status,
     });
+  }
+
+  async applyVerificationChangesRequested(
+    envelope: IEventEnvelope,
+  ): Promise<void> {
+    const payload = envelope.payload as {
+      listingId?: string;
+      caseId?: string;
+    };
+    const listingId = payload.listingId;
+
+    if (!listingId) {
+      Logger.info('listings.applyVerificationChangesRequested skip', {
+        eventName: 'listings.apply_verification_changes_requested_skip',
+        reason: 'missing_listing_id',
+        eventType: envelope.eventType,
+        aggregateId: envelope.aggregateId,
+      });
+      return;
+    }
+
+    const listing =
+      await this.listingRepositoryRead.findListingById(listingId);
+    if (!listing) {
+      Logger.info('listings.applyVerificationChangesRequested skip', {
+        eventName: 'listings.apply_verification_changes_requested_skip',
+        reason: 'listing_not_found',
+        listingId,
+      });
+      return;
+    }
+
+    if (listing.status === EListingStatus.DRAFT) {
+      return;
+    }
+
+    if (listing.status === EListingStatus.SUBMITTED) {
+      await this.transitionStatus(
+        listing,
+        EListingStatus.DRAFT,
+        undefined,
+        'verification_changes_requested',
+      );
+      return;
+    }
+
+    Logger.info('listings.applyVerificationChangesRequested skip', {
+      eventName: 'listings.apply_verification_changes_requested_skip',
+      reason: 'status_not_eligible',
+      listingId,
+      status: listing.status,
+    });
+  }
+
+  async applyVerificationRejected(envelope: IEventEnvelope): Promise<void> {
+    const payload = envelope.payload as {
+      listingId?: string;
+      caseId?: string;
+      reason?: string;
+    };
+    const listingId = payload.listingId;
+
+    if (!listingId) {
+      Logger.info('listings.applyVerificationRejected skip', {
+        eventName: 'listings.apply_verification_rejected_skip',
+        reason: 'missing_listing_id',
+        eventType: envelope.eventType,
+        aggregateId: envelope.aggregateId,
+      });
+      return;
+    }
+
+    const listing =
+      await this.listingRepositoryRead.findListingById(listingId);
+    if (!listing) {
+      Logger.info('listings.applyVerificationRejected skip', {
+        eventName: 'listings.apply_verification_rejected_skip',
+        reason: 'listing_not_found',
+        listingId,
+      });
+      return;
+    }
+
+    if (listing.status === EListingStatus.REJECTED) {
+      return;
+    }
+
+    if (listing.status === EListingStatus.SUBMITTED) {
+      await this.transitionStatus(
+        listing,
+        EListingStatus.REJECTED,
+        undefined,
+        payload.reason ?? 'verification_rejected',
+      );
+      return;
+    }
+
+    Logger.info('listings.applyVerificationRejected skip', {
+      eventName: 'listings.apply_verification_rejected_skip',
+      reason: 'status_not_eligible',
+      listingId,
+      status: listing.status,
+    });
+  }
+
+  private async assertRevisionChangesApplied(listing: IListing): Promise<void> {
+    if (!this.verificationCaseRepositoryRead) {
+      return;
+    }
+    if (listing.status !== EListingStatus.DRAFT) {
+      return;
+    }
+
+    const changesRequestedCase =
+      await this.verificationCaseRepositoryRead.findLatestChangesRequestedCaseByListingId(
+        listing.id,
+      );
+    if (!changesRequestedCase) {
+      return;
+    }
+
+    assertRequiredChangesApplied(listing, changesRequestedCase);
   }
 
   private async transitionStatus(
@@ -411,6 +829,25 @@ export class ListingService implements IListingService {
     }
   }
 
+  private assertCreateMediaReady(media: IListingMedia): void {
+    if (!media?.photoUrls?.length) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message: 'At least one photo is required to create a listing',
+        details: { field: 'media.photoUrls' },
+      } as IThrowedError;
+    }
+    if (!media.videoUrl?.trim()) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message: 'A video is required to create a listing',
+        details: { field: 'media.videoUrl' },
+      } as IThrowedError;
+    }
+  }
+
   private assertSubmitReady(listing: IListing): void {
     if (!listing.media?.photoUrls?.length) {
       throw {
@@ -418,6 +855,14 @@ export class ListingService implements IListingService {
         errorCode: EErrorCode.FIELD_INVALID,
         message: 'At least one photo is required to submit',
         details: { field: 'media.photoUrls' },
+      } as IThrowedError;
+    }
+    if (!listing.media.videoUrl?.trim()) {
+      throw {
+        status: 400,
+        errorCode: EErrorCode.FIELD_INVALID,
+        message: 'A video is required to submit',
+        details: { field: 'media.videoUrl' },
       } as IThrowedError;
     }
     if (!listing.shipping?.modes?.length) {
@@ -513,5 +958,87 @@ export class ListingService implements IListingService {
         details: { productId },
       } as IThrowedError;
     }
+  }
+
+  private async resolveListingMedia(
+    media: IListingMedia,
+    sellerId: string,
+  ): Promise<IListingMedia> {
+    if (!this.mediaClient) {
+      return media;
+    }
+
+    const hasPhotoAssets = Boolean(media.assetIds?.length);
+    const hasVideoAsset = Boolean(media.videoAssetId?.trim());
+    if (!hasPhotoAssets && !hasVideoAsset) {
+      return media;
+    }
+
+    let photoUrls = media.photoUrls ?? [];
+    let coverPhotoUrl = media.coverPhotoUrl;
+    let videoUrl = media.videoUrl;
+    let assetIds = media.assetIds;
+    let videoAssetId = media.videoAssetId?.trim();
+
+    if (hasPhotoAssets && media.assetIds) {
+      photoUrls = [];
+      for (const assetId of media.assetIds) {
+        const asset = await this.mediaClient.assertAttachableAsset({
+          assetId,
+          purpose: EMediaPurpose.LISTING,
+          ownerId: sellerId,
+        });
+        if (!isImageContentType(asset.contentType)) {
+          throw {
+            status: 400,
+            errorCode: EErrorCode.FIELD_INVALID,
+            message: 'media.assetIds must reference image assets only',
+            details: { field: 'media.assetIds', assetId },
+          } as IThrowedError;
+        }
+        const urls = await this.mediaClient.resolvePublicVariantUrls(assetId);
+        if (urls[0]) {
+          photoUrls.push(urls[0]);
+        }
+      }
+      coverPhotoUrl = media.coverPhotoUrl || photoUrls[0];
+      assetIds = media.assetIds;
+    }
+
+    if (hasVideoAsset && videoAssetId) {
+      const asset = await this.mediaClient.assertAttachableAsset({
+        assetId: videoAssetId,
+        purpose: EMediaPurpose.LISTING,
+        ownerId: sellerId,
+      });
+      if (!isVideoContentType(asset.contentType)) {
+        throw {
+          status: 400,
+          errorCode: EErrorCode.FIELD_INVALID,
+          message: 'media.videoAssetId must reference a video asset',
+          details: { field: 'media.videoAssetId', assetId: videoAssetId },
+        } as IThrowedError;
+      }
+      const resolvedVideoUrl =
+        await this.mediaClient.resolvePublicVideoUrl(videoAssetId);
+      if (!resolvedVideoUrl) {
+        throw {
+          status: 400,
+          errorCode: EErrorCode.FIELD_INVALID,
+          message: 'media.videoAssetId has no public video URL',
+          details: { field: 'media.videoAssetId', assetId: videoAssetId },
+        } as IThrowedError;
+      }
+      videoUrl = resolvedVideoUrl;
+    }
+
+    return {
+      ...media,
+      photoUrls,
+      coverPhotoUrl,
+      videoUrl,
+      assetIds,
+      videoAssetId,
+    };
   }
 }

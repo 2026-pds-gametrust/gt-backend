@@ -10,6 +10,8 @@ const MediaSchema = new Schema(
     photoUrls: { type: [String], default: [] },
     videoUrl: { type: String },
     coverPhotoUrl: { type: String },
+    assetIds: { type: [String], default: undefined },
+    videoAssetId: { type: String },
   },
   { _id: false },
 );

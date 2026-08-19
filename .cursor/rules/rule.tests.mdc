@@ -32,11 +32,38 @@ describe('when <context>', () => {
 });
 ```
 
+## Boundary cases (mandatory when inputs have edges)
+
+For values with a defined expected result or limit, cover **exact**, **just below**, and **just above** — not only the happy path.
+
+```ts
+// ✅ Pattern — exact + below + above
+describe('when adding 1 and 1', () => {
+  it('should return 2', async () => { /* exact */ });
+});
+
+describe('when adding 1 and 0', () => {
+  it('should return 1', async () => { /* below */ });
+});
+
+describe('when adding 1 and 2', () => {
+  it('should return 3', async () => { /* above */ });
+});
+
+// ❌ Anti-pattern — only the exact / happy case
+describe('when adding 1 and 1', () => {
+  it('should return 2', async () => { /* ... */ });
+});
+// missing below and above
+```
+
+Apply the same triad to domain limits (max length, thresholds, min/max counts, status cutoffs).
+
 ## Mock policy
 
 - **Do not** mock the system under test.
 - **Do not** mock Repository Read/Write in a **Service** test — use factory + test Mongo (or an existing in-memory fake pattern).
-- **Do** use `jest.spyOn` for external services and SQS producers/handlers.
+- **Do** use `jest.spyOn` for external services and Kafka producers/handlers.
 - Avoid indiscriminate `jest.mock` of internal modules in the layer under test.
 
 ## Writing patterns
@@ -44,7 +71,7 @@ describe('when <context>', () => {
 - **HTTP integration:** use `supertest` with the app from integration setup (e.g. import `jest/setup-integration-tests` as in current controller tests); do not duplicate bootstrap by hand unless necessary.
 - **Mongo integration:** when the test validates persistence, confirm state with **model**/`UserModel` only in the test layer (acceptable in integration tests), keeping production aligned with layered architecture.
 - **Assertions:** HTTP status, body (`toMatchObject`), and date/contract fields when relevant; avoid weak tests that do not assert main behavior.
-- **Scenarios:** happy path, validation, not-found/conflict in Service, auth when applicable, messaging emit/non-emit, repository null vs found.
+- **Scenarios:** happy path, **boundary** (exact / just below / just above when edges exist), validation, not-found/conflict in Service, auth when applicable, messaging emit/non-emit, repository null vs found.
 
 ## Quality and commands
 

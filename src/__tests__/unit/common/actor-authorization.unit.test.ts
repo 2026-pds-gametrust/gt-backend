@@ -4,6 +4,7 @@ import {
   assertActorPresent,
   assertBackofficeAdminOrSystem,
   assertOwnerOrAdmin,
+  assertOwnerOrAdminOnly,
   isBackofficeOrAdmin,
   isSystemActor,
   systemActorContext,
@@ -59,6 +60,39 @@ describe('when checking actor authorization helpers', () => {
     }
   });
 
+  it('should allow owner or admin only, not backoffice, on User PII', () => {
+    expect(() =>
+      assertOwnerOrAdminOnly({ actorId: 'owner', groups: [] }, 'owner'),
+    ).not.toThrow();
+    expect(() =>
+      assertOwnerOrAdminOnly(
+        { actorId: 'admin', groups: [EUserGroup.ADMIN] },
+        'owner',
+      ),
+    ).not.toThrow();
+    try {
+      assertOwnerOrAdminOnly(
+        { actorId: 'mod', groups: [EUserGroup.BACKOFFICE] },
+        'owner',
+      );
+      fail('expected throw');
+    } catch (error) {
+      expect(error).toMatchObject({
+        status: 403,
+        errorCode: EErrorCode.FIELD_INVALID,
+      });
+    }
+    try {
+      assertOwnerOrAdminOnly({ actorId: 'other', groups: [] }, 'owner');
+      fail('expected throw');
+    } catch (error) {
+      expect(error).toMatchObject({
+        status: 403,
+        errorCode: EErrorCode.FIELD_INVALID,
+      });
+    }
+  });
+
   it('should allow backoffice admin or system on publish gate', () => {
     expect(() =>
       assertBackofficeAdminOrSystem(systemActorContext()),
@@ -75,5 +109,61 @@ describe('when checking actor authorization helpers', () => {
     } catch (error) {
       expect(error).toMatchObject({ status: 403 });
     }
+  });
+});
+
+describe('when the actor is the User PII owner', () => {
+  it('should not throw on assertOwnerOrAdminOnly', () => {
+    expect(() =>
+      assertOwnerOrAdminOnly({ actorId: 'owner', groups: [] }, 'owner'),
+    ).not.toThrow();
+  });
+});
+
+describe('when the actor has ADMIN and is not the owner', () => {
+  it('should not throw on assertOwnerOrAdminOnly', () => {
+    expect(() =>
+      assertOwnerOrAdminOnly(
+        { actorId: 'admin', groups: [EUserGroup.ADMIN] },
+        'owner',
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe('when the actor has BACKOFFICE only and is not the owner', () => {
+  it('should reject with 403 FIELD_INVALID', () => {
+    try {
+      assertOwnerOrAdminOnly(
+        { actorId: 'mod', groups: [EUserGroup.BACKOFFICE] },
+        'owner',
+      );
+      fail('expected throw');
+    } catch (error) {
+      expect(error).toMatchObject({
+        status: 403,
+        errorCode: EErrorCode.FIELD_INVALID,
+      });
+    }
+  });
+});
+
+describe('when the actor is another APP_USER', () => {
+  it('should reject with 403 FIELD_INVALID', () => {
+    try {
+      assertOwnerOrAdminOnly({ actorId: 'other', groups: [] }, 'owner');
+      fail('expected throw');
+    } catch (error) {
+      expect(error).toMatchObject({
+        status: 403,
+        errorCode: EErrorCode.FIELD_INVALID,
+      });
+    }
+  });
+});
+
+describe('when systemActorContext is used outside HTTP', () => {
+  it('should still include SYSTEM', () => {
+    expect(systemActorContext().groups).toContain('SYSTEM');
   });
 });

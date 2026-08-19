@@ -1,0 +1,105 @@
+{
+  "repo_notes": [
+    {
+      "author": "GamerTrust backend",
+      "content": "This repository is the GamerTrust marketplace backend (gt-backend), not a generic Node boilerplate. It is a modular monolith: one Express process, one MongoDB database, modules as bounded contexts (identity, catalog, listings, verification, trust, search, favorites, media). Folder spelling is mandatory: infraestructure (with e) and configuration (singular). Domain must not import Infraestructure (no Mongoose, IM*, concrete SQS in domain). Business rules live in Service; Repository returns null when missing and must not throw product 404/409; Controllers are thin HTTP adapters.\n\nHTTP contract source of truth is src/contracts/service.yaml (OpenAPI). Human API docs are generated into docs/en/api/ and docs/pt-BR/api/ (yarn docs:api). Do not invent a wiki page per REST endpoint — link those trees instead. Public signup is POST /auth/register, not POST /users (admin-only). Identity comes only from the first-party access JWT; client-sent x-user-id / x-user-groups are untrusted. Messaging transport as implemented is SNS+SQS (LocalStack in docker-compose); domain contracts are transport-neutral (producer.interface.ts). Do not document Kafka as the current transport.\n\nProduct rules: trust greater than volume — never display a verification seal unless the API returns a granted/active seal. Product (catalog model, /products) is not Listing (unit offer, /listings). AI must not invent attributes, condition, warranty, or seals. Architecture decisions (ARCH-*, DEC-*) live in docs/architecture/. Entity catalog in docs/entities/. Human project docs: docs/en/ and docs/pt-BR/. Working SDD artifacts in docs/specs/ are not published product docs."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Project Overview",
+      "purpose": "What gt-backend is: GamerTrust Phase 1 modular monolith, stack (Express, MongoDB, OpenAPI), documentation surfaces (docs/en, docs/pt-BR, OpenAPI, this wiki), and non-negotiable product rules (trust > volume, Product ≠ Listing, no invented seals).",
+      "parent": null
+    },
+    {
+      "title": "Getting Started",
+      "purpose": "Local setup: yarn install, docker compose MongoDB replica set, .env (DATABASE_URI, PORT, CORS, S3_USE_MEMORY, seed admin), yarn dev, GET /health, yarn seed:local, tests and yarn docs:api. Point to docs/en/getting-started.md.",
+      "parent": "Project Overview"
+    },
+    {
+      "title": "Layered Architecture",
+      "purpose": "Domain / Application / Infraestructure / Configuration / Contracts: what each layer owns, entity vs service vs repository, factories in src/configuration/factory, naming I* IM* E*. Cite AGENTS.md and docs/architecture-and-layers.md. Folder spelling infraestructure and configuration.",
+      "parent": "Project Overview"
+    },
+    {
+      "title": "Module Map",
+      "purpose": "Phase 1 bounded contexts, collection ownership, sync ports vs events, Product ≠ Listing. Summarize docs/architecture/02-module-map.md (ARCH-002). Later phases (orders, payments) are not HTTP in this MVP.",
+      "parent": "Project Overview"
+    },
+    {
+      "title": "HTTP conventions and OpenAPI",
+      "purpose": "service.yaml as source of truth, express-openapi-validator, public vs Bearer vs backoffice vs admin vs owner-or-admin, translated errors EErrorCode, pagination, mass-assignment ban. Public signup POST /auth/register. Point to docs/en/api and docs/pt-BR/api for per-operation contracts.",
+      "parent": "Project Overview"
+    },
+    {
+      "title": "Identity and Auth",
+      "purpose": "First-party JWT + opaque refresh (not Cognito), User without password, credentials and refresh_sessions, profiles, CEP lookup, events identity.user.registered and identity.user.verified. Cover src/application/controllers/auth.controller.ts and identity domain. POST /users is ADMIN.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Catalog",
+      "purpose": "Categories, services taxonomy (DEC-024), products as models, attribute-schema, price_history. Client must not invent form fields. Events catalog.*.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Listings",
+      "purpose": "Unit offers, quantity 1, ownership in Service via ActorContext, state machine DRAFT → SUBMITTED → PUBLISHED, pause. Events listings.listing.*. Publish is backoffice after verification.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Verification and Trust",
+      "purpose": "Verification cases, evidence (restricted media), seals (show only when granted), TrustScore as recompute over trust_events ledger, seller levels. Never conflate user identity verify with a listing seal.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Search",
+      "purpose": "search_documents read model (rebuildable), GET /search over PUBLISHED listings, synonyms as projection of catalog taxonomy, POST /search/reconcile operational. Events consumed from listings, catalog, trust.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Favorites",
+      "purpose": "Saved product or listing; userId from Bearer token not body. Alerts are Phase 2.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Media",
+      "purpose": "Upload grants, complete, asset metadata READY, content grants, S3 or S3_USE_MEMORY. Attach asset id to Listing.media. Restricted evidence vs public listing media.",
+      "parent": "Module Map"
+    },
+    {
+      "title": "Inter-module communication",
+      "purpose": "When to use sync client ports vs domain events vs event-fed read models. No cross-module domain imports. IMediaClient pattern, ActorContext on ports, system actor on handlers. Point to docs/en/architecture/communication.md and ARCH-003.",
+      "parent": "Layered Architecture"
+    },
+    {
+      "title": "Messaging and events",
+      "purpose": "Asynchronous runtime: IEventEnvelope fields, DispatchingEventPublisher, in-process dispatch vs SQS_CONSUMERS_ENABLED, SqsEventPublisher env (SNS_TOPIC_ARN, SQS_QUEUE_URL, MESSAGING_DISABLED), DomainEventRouterFactory handler map as implemented, publish-after-commit, at-least-once idempotency, how to add an event. Target topology SNS per event × SQS per consumer (ARCH-005). Do not describe Kafka as current transport. Point to docs/en/architecture/messaging.md.",
+      "parent": "Layered Architecture"
+    },
+    {
+      "title": "Persistence",
+      "purpose": "MongoDB/Mongoose, IM* vs I*, adapters, replica set for transactions, no cross-module Mongo transactions (DEC-040), repository null-if-missing pattern.",
+      "parent": "Layered Architecture"
+    },
+    {
+      "title": "Security",
+      "purpose": "authorizeByGroup on routes, ownership in Service, no secrets in code/logs, no raw req into Mongo filters, ActorContext from JWT only, LGPD/PII/evidence rules from docs/architecture/07-security.md.",
+      "parent": "Layered Architecture"
+    },
+    {
+      "title": "Testing",
+      "purpose": "Jest unit and integration under src/__tests__/, mongodb-memory-server for int tests, coverage target 80%, spies on messaging interfaces (never a real broker in Jest).",
+      "parent": "Layered Architecture"
+    },
+    {
+      "title": "How to add an endpoint",
+      "purpose": "Change controller + service + OpenAPI service.yaml together, explicit security, tests, then yarn docs:api. Overlay PRODUCT_GAIN in scripts/generate-frontend-api-docs.js for both locales. Do not add a DeepWiki page per endpoint. Cite docs/en/contributing.md.",
+      "parent": "HTTP conventions and OpenAPI"
+    },
+    {
+      "title": "Where to find API docs",
+      "purpose": "Map generated docs: docs/en/api and docs/pt-BR/api (README, request.md, response.md, parameters.md, examples.md, curl.sh). Deprecated docs/frontend-api redirects here. OpenAPI file src/contracts/service.yaml. Project hubs docs/en/README.md and docs/pt-BR/README.md.",
+      "parent": "HTTP conventions and OpenAPI"
+    }
+  ]
+}

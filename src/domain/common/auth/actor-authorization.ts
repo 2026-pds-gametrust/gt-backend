@@ -12,6 +12,10 @@ export function isBackofficeOrAdmin(actor: IActorContext): boolean {
   );
 }
 
+export function isAdmin(actor: IActorContext): boolean {
+  return actor.groups.some((group) => group === EUserGroup.ADMIN);
+}
+
 export function isSystemActor(actor: IActorContext): boolean {
   return (
     actor.actorId === SYSTEM_ACTOR_ID ||
@@ -44,6 +48,25 @@ export function assertOwnerOrAdmin(
     status: 403,
     errorCode: EErrorCode.FIELD_INVALID,
     message: 'Forbidden: actor is not the resource owner',
+    details: { actorId: actor.actorId, ownerId },
+  } as IThrowedError;
+}
+
+export function assertOwnerOrAdminOnly(
+  actor: IActorContext,
+  ownerId: string,
+): void {
+  assertActorPresent(actor);
+  if (isAdmin(actor)) {
+    return;
+  }
+  if (actor.actorId === ownerId) {
+    return;
+  }
+  throw {
+    status: 403,
+    errorCode: EErrorCode.FIELD_INVALID,
+    message: 'Forbidden: actor is not the resource owner or admin',
     details: { actorId: actor.actorId, ownerId },
   } as IThrowedError;
 }

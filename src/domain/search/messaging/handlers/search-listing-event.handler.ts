@@ -8,6 +8,11 @@ type TListingStatusPayload = {
   toStatus?: string;
 };
 
+type TSealEventPayload = {
+  listingId?: string;
+  sealId?: string;
+};
+
 /**
  * Search projection for listing lifecycle events.
  */
@@ -15,11 +20,20 @@ export class SearchListingEventHandler implements IEventHandler {
   constructor(private readonly searchDocumentService: ISearchDocumentService) {}
 
   async handle(envelope: IEventEnvelope): Promise<void> {
-    const payload = envelope.payload as TListingStatusPayload;
+    const payload = envelope.payload as TListingStatusPayload &
+      TSealEventPayload;
     const listingId =
       payload.listingId ??
       (envelope.aggregateId ? String(envelope.aggregateId) : undefined);
     if (!listingId) {
+      return;
+    }
+
+    if (
+      envelope.eventType === 'verification.seal.granted' ||
+      envelope.eventType === 'verification.seal.revoked'
+    ) {
+      await this.searchDocumentService.reindexListing(listingId);
       return;
     }
 

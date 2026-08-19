@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { EFavoriteTargetType } from './enums/EFavoriteTargetType';
 import { IFavorite } from './interfaces/favorite.interface';
 
@@ -18,10 +19,10 @@ export class FavoriteServiceEntity implements IFavorite {
   }
 
   private validate(favorite: IFavorite): void {
-    if (!favorite.id?.trim()) throw new Error('id is required');
-    if (!favorite.userId?.trim()) throw new Error('userId is required');
+    requireNonEmptyString(favorite.id, 'id');
+    requireNonEmptyString(favorite.userId, 'userId');
     if (!favorite.targetType) throw new Error('targetType is required');
-    if (!favorite.targetId?.trim()) throw new Error('targetId is required');
+    requireNonEmptyString(favorite.targetId, 'targetId');
     if (!favorite.createdAt) throw new Error('createdAt is required');
   }
 }

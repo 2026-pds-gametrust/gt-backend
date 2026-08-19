@@ -27,6 +27,7 @@ See [meta.cursor-rules.mdc](rules/meta.cursor-rules.mdc) for the full convention
 | [rule.semantic-quality.mdc](rules/rule.semantic-quality.mdc) | Semantic naming, REST paths, OpenAPI schemas |
 | [rule.tests.mdc](rules/rule.tests.mdc) | Jest tests — `when`/`should`, mock policy, `*.int`/`*.unit`, coverage |
 | [rule.release.mdc](rules/rule.release.mdc) | Release via semantic-release (not Changesets) |
+| [rule.security-baseline.mdc](rules/rule.security-baseline.mdc) | Authorization, injection, secrets, and data exposure by layer (`alwaysApply`) |
 | [rule.git-no-ai-attribution.mdc](rules/rule.git-no-ai-attribution.mdc) | Never add `Made with Cursor` / AI attribution to commits or PRs (`alwaysApply`) |
 
 ## Meta rules (`meta.*`)
@@ -54,7 +55,7 @@ Map any repo as-is, mine patterns, steward Cursor rules (gated) — without
 assuming Clean/Hexagonal/MVC. Coexists with layered SDD agents:
 
 [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md) ·
-`agt-architecture-probe` · `agt-pattern-miner` · `agt-pattern-steward` ·
+`agt-architecture-probe` · `agt-pattern-miner` · `agt-architecture-analyst` · `agt-pattern-steward` ·
 `skill-architecture-discovery`.
 
 ## Skills index

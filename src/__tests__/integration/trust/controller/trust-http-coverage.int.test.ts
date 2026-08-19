@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -15,8 +16,7 @@ describe('when trust HTTP routes are exercised', () => {
 
     const appended = await supertest(app.app)
       .post('/trust-events')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: eventId,
         sellerId,
@@ -39,8 +39,7 @@ describe('when trust HTTP routes are exercised', () => {
 
     const recomputed = await supertest(app.app)
       .post(`/trust-scores/${sellerId}/recompute`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor');
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
     expect(recomputed.statusCode).toBe(200);
     expect(recomputed.body.score).toBe(10);
 

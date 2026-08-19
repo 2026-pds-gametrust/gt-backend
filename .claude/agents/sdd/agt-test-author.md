@@ -4,7 +4,7 @@ description: >-
   Dedicated Jest test author for this Node.js/TypeScript repo. Creates and extends
   unit and integration tests under src/__tests__/ with mandatory when/should naming,
   explicit scenario coverage, and a strict mock policy (no Repository mocks in
-  service tests; jest.spyOn for external services and SQS). Never changes
+  service tests; jest.spyOn for external services and Kafka). Never changes
   production code to make tests pass.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: inherit
@@ -114,6 +114,30 @@ describe('when creating a user with an existing email', () => {
 
 Do not use SUT-name-only describes (`describe('UserService.createUser')`) for new tests.
 
+## Boundary cases (mandatory when inputs have edges)
+
+For values with a defined expected result or limit, cover **exact**, **just below**, and **just above** — not only the happy path.
+
+```ts
+// ✅ Pattern
+describe('when adding 1 and 1', () => {
+  it('should return 2', async () => { /* exact */ });
+});
+describe('when adding 1 and 0', () => {
+  it('should return 1', async () => { /* below */ });
+});
+describe('when adding 1 and 2', () => {
+  it('should return 3', async () => { /* above */ });
+});
+
+// ❌ Anti-pattern — only the exact case
+describe('when adding 1 and 1', () => {
+  it('should return 2', async () => { /* ... */ });
+});
+```
+
+Apply the same triad to domain limits (max length, thresholds, min/max counts, status cutoffs).
+
 ## Scenario coverage checklist
 
 For each operation/method under test, cover **applicable** cases:
@@ -121,6 +145,7 @@ For each operation/method under test, cover **applicable** cases:
 | Scenario | Typical layer |
 |----------|----------------|
 | Happy path (result + relevant side effects) | Service / Controller / Repository |
+| Boundary (exact / just below / just above) | Entity / Service / Unit |
 | Invalid input / entity validation | Entity / Service |
 | Not found (`404` / `RESOURCE_NOT_FOUND`) | **Service** (never assert product 404 in Repository) |
 | Conflict / uniqueness (`409`) | **Service** |
@@ -152,7 +177,7 @@ Rules:
 ### Required / preferred — use `jest.spyOn`
 
 - External services (HTTP clients, SDKs, email, third-party APIs)
-- event producers / handlers (injected interface): spy on `produce` / handler methods
+- Kafka producers / handlers (injected interface): spy on `produce` / handler methods
 - Clock / UUID only when the assertion depends on a fixed value
 
 Example shape:
@@ -233,5 +258,5 @@ Recommended next owner:
 - Never modify production code to make tests pass.
 - Always use `describe('when …')` / `it('should …')` for new tests.
 - Never mock Repository in Service tests.
-- Prefer `jest.spyOn` for external services and SQS.
+- Prefer `jest.spyOn` for external services and Kafka.
 - Never invent conflicting product expectations when requirements are ambiguous — mark `BLOCKED` and ask PO/QA.

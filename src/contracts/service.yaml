@@ -19,16 +19,2088 @@ servers:
   - url: http://localhost
 
 tags:
+  - name: Auth
+    description: First-party register, login, refresh, logout and current user
   - name: Users
     description: User management operations
+  - name: CEP
+    description: Brazilian postal code lookup (BrasilAPI)
+  - name: Profiles
+    description: Identity profile and shipping addresses
+  - name: Catalog
+    description: Catalog taxonomy and products
+  - name: Listings
+    description: Marketplace listings and listing events
+  - name: Verification
+    description: Verification cases, evidence and seals
+  - name: Trust
+    description: Trust events, scores and seller levels
+  - name: Search
+    description: Search documents, synonyms and query observability
+  - name: Favorites
+    description: User favorites for products and listings
+  - name: Media
+    description: Image upload grants, processing status and content grants
+  - name: AI
+    description: Listing quality analysis and validation scores
+
+security:
+  - bearerAuth: []
 
 paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Register a marketplace member and issue a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewAuthRegistration'
+      responses:
+        '201':
+          description: Registered with access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '400':
+          description: Validation error or USER_UNDERAGE / FIELD_INVALID (including duplicate identifier)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '429':
+          $ref: '#/components/responses/AuthThrottled'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLogin'
+      responses:
+        '200':
+          description: Session issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '401':
+          description: AUTH_INVALID_CREDENTIALS (unknown email, wrong password, no credential, or BLOCKED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '429':
+          $ref: '#/components/responses/AuthThrottled'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      security: []
+      summary: Rotate a refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefresh'
+      responses:
+        '200':
+          description: New access and refresh tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '401':
+          description: AUTH_INVALID_CREDENTIALS (unknown, expired, revoked/reuse, or BLOCKED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '429':
+          $ref: '#/components/responses/AuthThrottled'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Revoke this session's refresh token and invalidate its access token
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Return the authenticated public User
+      responses:
+        '200':
+          description: Public User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User not found — RESOURCE_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /categories:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: List categories
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Catalog
+      summary: Create category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewCategory'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /categories/{id}:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: Get category by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Catalog
+      summary: Update category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategory'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /services:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: List taxonomy services
+      responses:
+        '200':
+          description: Service list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceTaxonomy'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Catalog
+      summary: Create taxonomy service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewServiceTaxonomy'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceTaxonomy'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /services/{id}:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: Get taxonomy service by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceTaxonomy'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Catalog
+      summary: Update taxonomy service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceTaxonomy'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceTaxonomy'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /categories/{categoryId}/attribute-schema:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: Get category attribute schema
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schema found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryAttributeSchema'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Catalog
+      summary: Upsert category attribute schema
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertCategoryAttributeSchema'
+      responses:
+        '200':
+          description: Upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryAttributeSchema'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /products:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: List products
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Catalog
+      summary: Create product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewProduct'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /products/{id}:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: Get product by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Catalog
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProduct'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /products/{productId}/price-history:
+    get:
+      tags:
+        - Catalog
+      security: []
+      summary: List price history for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Price history list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriceHistory'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /listings:
+    get:
+      tags:
+        - Listings
+      security: []
+      summary: List verified public listings
+      description: >
+        Returns paginated PUBLISHED listings with an active GRANTED seal.
+        Optional sellerId returns an array — owner/backoffice see all statuses for
+        that seller; other callers see only verified listings for that seller.
+      parameters:
+        - name: sellerId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by seller; non-owners receive verified listings only
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Verified listing page or seller-filtered list
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ListingPage'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/Listing'
+        '400':
+          description: Invalid pagination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Listings
+      summary: Create listing draft
+      description: >
+        Creates a DRAFT listing. After resolving media assets, at least one
+        public photo and one public video are required (via assetIds/videoAssetId
+        or legacy photoUrls/videoUrl).
+      parameters:
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewListing'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '400':
+          description: Invalid media, shipping, or request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Actor is not the seller and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Seller or product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /listings/mine:
+    get:
+      tags:
+        - Listings
+      summary: List authenticated seller's own listings
+      parameters:
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD, REJECTED]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Seller inventory page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerListingPage'
+        '400':
+          description: Invalid filter or pagination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /listings/{id}:
+    get:
+      tags:
+        - Listings
+      security: []
+      summary: Get listing by id
+      description: >
+        Public callers see only PUBLISHED listings with an active GRANTED seal.
+        The listing owner and BACKOFFICE/ADMIN may read any status. Others receive 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Listing found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Listings
+      summary: Update listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateListing'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '400':
+          description: Invalid media attachment or request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Actor is not the seller and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /listings/{id}/submit:
+    post:
+      tags:
+        - Listings
+      summary: Submit listing for verification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '400':
+          description: Invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Actor is not the seller and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /listings/{id}/publish:
+    post:
+      tags:
+        - Listings
+      summary: Publish listing (MVP backoffice gate)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /listings/{id}/pause:
+    post:
+      tags:
+        - Listings
+      summary: Pause published listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '403':
+          description: Actor is not the seller and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /listings/{id}/events:
+    get:
+      tags:
+        - Listings
+      security: []
+      summary: List listing status events
+      description: >
+        Same visibility rules as GET /listings/{id}. Non-visible listings return 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event ledger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListingEvent'
+        '404':
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /listings/{id}/analysis:
+    get:
+      tags:
+        - AI
+        - Listings
+      summary: Get latest AI validation analysis for a listing
+      description: >
+        Owner and BACKOFFICE/ADMIN only. Returns explainable score and checklist items.
+        Does not include prompt internals or raw media.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Latest analysis snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingAnalysis'
+        '404':
+          description: Listing or analysis not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /verification-cases:
+    get:
+      tags:
+        - Verification
+      summary: List verification cases for moderation
+      description: |
+        Backoffice queue with server-side filters, search, pagination and summary stats.
+        Search matches case id, listing id, listing title, seller id, seller name and email.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, IN_REVIEW, APPROVED, REJECTED]
+        - name: q
+          in: query
+          required: false
+          description: Free-text search across case, listing and seller fields
+          schema:
+            type: string
+        - name: moderatorId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: minScore
+          in: query
+          required: false
+          description: Minimum AI validation score (0–100) from checklist.aiAnalysis
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+        - name: maxScore
+          in: query
+          required: false
+          description: Maximum AI validation score (0–100) from checklist.aiAnalysis
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+        - name: hasAiScore
+          in: query
+          required: false
+          description: When false, only cases without AI score; cannot combine with minScore/maxScore
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Moderation queue page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationQueuePage'
+        '400':
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Verification
+      security: []
+      summary: Open verification case for listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewVerificationCase'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '404':
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Open case already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}:
+    get:
+      tags:
+        - Verification
+      summary: Get verification case by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/assign:
+    post:
+      tags:
+        - Verification
+      summary: Assign reviewer (backoffice)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [moderatorId]
+              properties:
+                moderatorId:
+                  type: string
+      responses:
+        '200':
+          description: Assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/approve:
+    post:
+      tags:
+        - Verification
+      summary: Approve case and grant seal (backoffice)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decisionReason:
+                  type: string
+                sealType:
+                  type: string
+                  enum: [POSSESSION, FUNCTIONING, IDENTITY, PROTECTED_PURCHASE, WARRANTY]
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition or active seal exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/reject:
+    post:
+      tags:
+        - Verification
+      summary: Reject verification case (backoffice)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '400':
+          description: Reason required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/request-changes:
+    post:
+      tags:
+        - Verification
+      summary: Request granular listing changes (backoffice)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestVerificationChanges'
+      responses:
+        '200':
+          description: Changes requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '400':
+          description: Invalid payload or asset reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{caseId}/evidence:
+    get:
+      tags:
+        - Verification
+      security: []
+      summary: List evidence metadata for a case
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evidence list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvidenceItem'
+        '404':
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+    post:
+      tags:
+        - Verification
+      security: []
+      summary: Add evidence metadata to a case
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEvidenceItem'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceItem'
+        '404':
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /seals:
+    get:
+      tags:
+        - Verification
+      security: []
+      summary: List seals by listingId
+      parameters:
+        - name: listingId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Seal list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Seal'
+  /seals/{id}:
+    get:
+      tags:
+        - Verification
+      security: []
+      summary: Get seal by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seal'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /seals/{id}/revoke:
+    post:
+      tags:
+        - Verification
+      summary: Revoke an active seal (backoffice)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sellerId]
+              properties:
+                sellerId:
+                  type: string
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Invalid status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /trust-events:
+    get:
+      tags:
+        - Trust
+      security: []
+      summary: List trust events by sellerId
+      parameters:
+        - name: sellerId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event ledger
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrustEvent'
+    post:
+      tags:
+        - Trust
+      summary: Append trust event (backoffice)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTrustEvent'
+      responses:
+        '201':
+          description: Created or existing (idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustEvent'
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /trust-scores/{sellerId}:
+    get:
+      tags:
+        - Trust
+      security: []
+      summary: Get trust score for seller (default 0)
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustScore'
+  /trust-scores/{sellerId}/recompute:
+    post:
+      tags:
+        - Trust
+      summary: Recompute trust score from ledger
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recomputed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustScore'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /seller-levels/{sellerId}:
+    get:
+      tags:
+        - Trust
+      security: []
+      summary: Get seller level (default NEW)
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Level
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerLevel'
+
+  /search:
+    get:
+      tags:
+        - Search
+      security: []
+      summary: Lexical search over published listing documents
+      parameters:
+        - name: q
+          in: query
+          required: false
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filters
+          in: query
+          required: false
+          description: JSON object of facet filters
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching search documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchDocument'
+
+  /search/reconcile:
+    post:
+      tags:
+        - Search
+      summary: Rebuild search_documents for PUBLISHED listings and synonym projections from taxonomy
+      description: Backoffice-only reconciliation of search read models (DEC-033)
+      responses:
+        '200':
+          description: Reconciliation counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchReconcileResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /synonyms:
+    get:
+      tags:
+        - Search
+      security: []
+      summary: List synonym projections for expansion
+      parameters:
+        - name: q
+          in: query
+          required: false
+          allowEmptyValue: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Synonym projections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Synonym'
+
+  /favorites:
+    get:
+      tags:
+        - Favorites
+      summary: List favorites for the authenticated actor
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: Ignored. Favorites are always listed for the access-token subject.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Favorites bound to the access-token subject
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Favorite'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Favorites
+      summary: Create a favorite
+      parameters:
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewFavorite'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Favorite'
+        '403':
+          description: Missing actor context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: User or target not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Duplicate favorite
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+
+  /favorites/{id}:
+    delete:
+      tags:
+        - Favorites
+      summary: Delete a favorite by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '204':
+          description: Deleted
+        '403':
+          description: Actor is not the favorite owner and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+
+  /media/uploads:
+    post:
+      tags:
+        - Media
+      security: []
+      summary: Create a presigned image or listing video upload grant
+      description: >
+        Images (jpeg/png/webp) up to 10 MiB for PRODUCT, LISTING, EVIDENCE.
+        Video (video/mp4) up to 50 MiB for LISTING only; processing publishes
+        the original without transcoding.
+      parameters:
+        - $ref: '#/components/parameters/XUserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewMediaUpload'
+      responses:
+        '201':
+          description: Upload grant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadGrant'
+        '400':
+          description: Invalid type or size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Actor is not allowed for this purpose or owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Evidence case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /media/uploads/{id}/complete:
+    post:
+      tags:
+        - Media
+      security: []
+      summary: Confirm the object arrived and start processing
+      description: >
+        Marks the upload as received and enqueues processing. Processing is
+        **asynchronous**: the response normally carries `status: UPLOADED`, and the
+        asset only becomes `READY` after the `media.asset.uploaded` event is consumed
+        (variants generated and stored).
+
+        An asset can only be attached to a listing or product once it is `READY` —
+        attaching an `UPLOADED` asset is rejected with 400. Clients must poll
+        `GET /media/assets/{id}` until `status` is `READY` (or `FAILED`) before
+        referencing the asset in `POST /listings` or `POST /products`.
+
+        The response may already show `READY` when in-process dispatch is enabled
+        (`EVENT_INPROCESS_DISPATCH=true`, the default in tests), so clients must not
+        rely on that timing.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+      responses:
+        '200':
+          description: >
+            Asset after complete. Normally `UPLOADED`; `READY` only under in-process
+            dispatch. Poll GET /media/assets/{id} before attaching.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAsset'
+        '400':
+          description: Object missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Asset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /media/assets/{id}:
+    get:
+      tags:
+        - Media
+      security: []
+      summary: Get media asset metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+      responses:
+        '200':
+          description: Asset metadata (evidence never includes public URLs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAsset'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Asset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /media/assets/{id}/content:
+    get:
+      tags:
+        - Media
+      security: []
+      summary: Get a short-lived content grant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+      responses:
+        '200':
+          description: Presigned GET
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaContentGrant'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Asset not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+
   /users:
     get:
       tags:
         - Users
       summary: Get all users
-      description: Retrieve a list of all users.
+      description: Retrieve a list of all users. Requires BACKOFFICE or ADMIN Bearer token.
       responses:
         '200':
           description: A list of users
@@ -38,12 +2110,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
-        '400':
-          description: Missing x-user-groups header (authorization middleware)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthMiddlewareError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '403':
           description: Caller is not in an allowed user group
           content:
@@ -60,7 +2128,7 @@ paths:
       tags:
         - Users
       summary: Create a new user
-      description: Add a new user to the database.
+      description: ADMIN only. Creates a marketplace User without a login credential.
       requestBody:
         required: true
         content:
@@ -74,12 +2142,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated caller is not ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationError'
+                $ref: '#/components/schemas/TranslatedApiError'
         '409':
           description: Resource conflict (e.g. email already registered)
           content:
@@ -98,7 +2174,7 @@ paths:
       tags:
         - Users
       summary: Get a user by ID
-      description: Retrieve a user by their unique ID.
+      description: Retrieve a user by their unique ID. Owner or ADMIN.
       parameters:
         - name: id
           in: path
@@ -113,6 +2189,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Authenticated caller is not the owner or ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
         '404':
           description: User not found
           content:
@@ -144,6 +2228,8 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdateUser'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: User updated successfully
           content:
@@ -155,7 +2241,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationError'
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Authenticated caller is not the owner or ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
         '404':
           description: User not found
           content:
@@ -181,12 +2273,20 @@ paths:
             type: string
           description: The ID of the user
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: User deleted successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
+        '403':
+          description: Authenticated caller is not the owner or ADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
         '404':
           description: User not found
           content:
@@ -200,17 +2300,515 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /users/{id}/groups:
+    put:
+      tags:
+        - Users
+      summary: Assign user groups (ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserGroups'
+      responses:
+        '200':
+          description: User with updated groups
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: FIELD_INVALID (e.g. SYSTEM assignment)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not ADMIN (Access denied), or self-escalation FIELD_INVALID
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthMiddlewareError'
+                  - $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{id}/verify:
+    post:
+      tags:
+        - Users
+      summary: Verify a user identity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Caller is not in an allowed user group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /cep/{cep}:
+    get:
+      tags:
+        - CEP
+      summary: Lookup Brazilian postal code via BrasilAPI
+      parameters:
+        - name: cep
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CEP with 8 digits (non-digits are stripped by the service)
+      responses:
+        '200':
+          description: CEP found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CepLookupResult'
+        '400':
+          description: Invalid CEP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller is not in an allowed user group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '404':
+          description: CEP not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '502':
+          description: Maps/CEP upstream failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profiles:
+    get:
+      tags:
+        - Profiles
+      summary: List profiles
+      responses:
+        '200':
+          description: Profile list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Profile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Caller is not in an allowed user group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Profiles
+      summary: Create a profile
+      parameters:
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewProfile'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '201':
+          description: Profile created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Actor is not the profile user and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Profile already exists for user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profiles/near:
+    get:
+      tags:
+        - Profiles
+      summary: Find profiles near a GeoJSON point
+      parameters:
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+        - name: radiusMeters
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 0
+            exclusiveMinimum: true
+          description: Search radius in meters (capped by server)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          description: Max results (capped by server)
+      responses:
+        '200':
+          description: Nearby public profiles with distance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileNear'
+        '400':
+          description: Invalid coordinates or radius
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller is not in an allowed user group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMiddlewareError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profiles/me:
+    get:
+      tags:
+        - Profiles
+      summary: Get authenticated user's own profile (owner projection)
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Owner profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profiles/by-user/{userId}:
+    get:
+      tags:
+        - Profiles
+      security: []
+      summary: Get profile by user id
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profiles/{id}:
+    get:
+      tags:
+        - Profiles
+      security: []
+      summary: Get profile by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Profiles
+      summary: Update profile by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/XUserIdHeader'
+        - $ref: '#/components/parameters/XUserGroupsHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfile'
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '403':
+          description: Actor is not the profile user and not backoffice/admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
+  parameters:
+    XUserIdHeader:
+      name: x-user-id
+      in: header
+      required: false
+      description: Not trusted as identity. Actor comes from the Bearer access token.
+      schema:
+        type: string
+    XUserGroupsHeader:
+      name: x-user-groups
+      in: header
+      required: false
+      description: Not trusted as identity. Groups come from the Bearer access token.
+      schema:
+        type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token issued by POST /auth/register, /auth/login or /auth/refresh
+  responses:
+    Unauthorized:
+      description: Missing, malformed, expired, invalid or logout-revoked Bearer token — AUTH_UNAUTHORIZED
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TranslatedApiError'
+    Forbidden:
+      description: Authenticated caller is not in an allowed group
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthMiddlewareError'
+    InternalError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    AuthThrottled:
+      description: Auth throttle exhausted — generic limiter body, not an identifier oracle
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthRateLimitError'
   schemas:
     AuthMiddlewareError:
       type: object
+      additionalProperties: false
       required:
         - error
       properties:
         error:
           type: string
           description: Error message from authorization middleware
-          example: 'Missing x-user-groups header'
+          example: 'Access denied'
+    AuthRateLimitError:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Generic throttle message with no email, CPF, or RESOURCE_CONFLICT
+          example: 'Too many requests, please try again later.'
     TranslatedApiError:
       type: object
       required:
@@ -230,49 +2828,1536 @@ components:
           additionalProperties: true
     User:
       type: object
+      required:
+        - id
+        - fullName
+        - email
+        - phone
+        - cpf
+        - birthDate
+        - verified
+        - phoneVerified
+        - status
+        - createdAt
       properties:
         id:
           type: string
-          description: The unique identifier of the user
-        name:
+        fullName:
           type: string
-          description: The user's name
         email:
           type: string
-          description: The user's email address
+        phone:
+          type: string
+        cpf:
+          type: string
+          description: 11 digits; never included in domain events
+        birthDate:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+        verified:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, BLOCKED, PENDING_VERIFICATION]
         createdAt:
           type: string
           format: date-time
-          description: The date and time the user was created
+        updatedAt:
+          type: string
+          format: date-time
+        groups:
+          type: array
+          description: HTTP-assignable groups; empty when unset. Never includes SYSTEM.
+          items:
+            type: string
+            enum: [app-user, partner, admin, backoffice]
+    GeoPoint:
+      type: object
+      required:
+        - type
+        - coordinates
+      properties:
+        type:
+          type: string
+          enum: [Point]
+        coordinates:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: number
+          description: '[longitude, latitude]'
+    Address:
+      type: object
+      required:
+        - id
+        - recipientName
+        - postalCode
+        - street
+        - number
+        - district
+        - city
+        - state
+        - country
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        recipientName:
+          type: string
+        postalCode:
+          type: string
+          description: CEP 8 digits
+        street:
+          type: string
+          description: Omitted or blank on public profile reads
+        number:
+          type: string
+        complement:
+          type: string
+        district:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+        country:
+          type: string
+          default: BR
+        isBilling:
+          type: boolean
+        isShipping:
+          type: boolean
+        geo:
+          $ref: '#/components/schemas/GeoPoint'
+          description: Present for owner/backoffice; omitted on public reads
+        geoSource:
+          type: string
+          enum: [BRASIL_API, NOMINATIM]
+    CepLookupResult:
+      type: object
+      required:
+        - postalCode
+        - city
+        - state
+      properties:
+        postalCode:
+          type: string
+        street:
+          type: string
+        district:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        geo:
+          $ref: '#/components/schemas/GeoPoint'
+    ProfileNear:
+      type: object
+      required:
+        - id
+        - userId
+        - createdAt
+        - distanceMeters
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        locationApprox:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        distanceMeters:
+          type: number
+    Profile:
+      type: object
+      required:
+        - id
+        - userId
+        - addresses
+        - createdAt
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        locationApprox:
+          type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+        defaultShippingAddressId:
+          type: string
+        setupItems:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewProfile:
+      type: object
+      required:
+        - id
+        - userId
+        - addresses
+        - defaultShippingAddressId
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        locationApprox:
+          type: string
+        addresses:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Address'
+        defaultShippingAddressId:
+          type: string
+        setupItems:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    UpdateProfile:
+      type: object
+      properties:
+        displayName:
+          type: string
+        bio:
+          type: string
+        locationApprox:
+          type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+        defaultShippingAddressId:
+          type: string
+        setupItems:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    Category:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - synonyms
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        parentId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewCategory:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        parentId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    UpdateCategory:
+      type: object
+      properties:
+        name:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        parentId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    ServiceTaxonomy:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - synonyms
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewServiceTaxonomy:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    UpdateServiceTaxonomy:
+      type: object
+      properties:
+        name:
+          type: string
+        synonyms:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    AttributeDef:
+      type: object
+      required:
+        - key
+        - name
+        - valueType
+        - required
+        - filterable
+        - facetOn
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        valueType:
+          type: string
+          enum: [STRING, NUMBER, BOOLEAN, ENUM]
+        required:
+          type: boolean
+        filterable:
+          type: boolean
+        facetOn:
+          type: string
+          enum: [PRODUCT, LISTING, BOTH]
+        enumValues:
+          type: array
+          items:
+            type: string
+        unit:
+          type: string
+        maxLength:
+          type: number
+        allowVariations:
+          type: boolean
+        group:
+          type: string
+    CategoryAttributeSchema:
+      type: object
+      required:
+        - id
+        - categoryId
+        - attributes
+        - version
+        - createdAt
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeDef'
+        version:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UpsertCategoryAttributeSchema:
+      type: object
+      required:
+        - attributes
+      properties:
+        id:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeDef'
+    Product:
+      type: object
+      required:
+        - id
+        - categoryId
+        - brand
+        - model
+        - slug
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        series:
+          type: string
+        slug:
+          type: string
+        mpn:
+          type: string
+        ean:
+          type: string
+        sku:
+          type: string
+        specs:
+          type: object
+          additionalProperties: true
+        imageUrls:
+          type: array
+          items:
+            type: string
+        imageAssetIds:
+          type: array
+          items:
+            type: string
+        referencePriceCents:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewProduct:
+      type: object
+      required:
+        - id
+        - categoryId
+        - brand
+        - model
+        - slug
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        series:
+          type: string
+        slug:
+          type: string
+        mpn:
+          type: string
+        ean:
+          type: string
+        sku:
+          type: string
+        specs:
+          type: object
+          additionalProperties: true
+        imageUrls:
+          type: array
+          items:
+            type: string
+        imageAssetIds:
+          type: array
+          items:
+            type: string
+        referencePriceCents:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    UpdateProduct:
+      type: object
+      properties:
+        brand:
+          type: string
+        model:
+          type: string
+        series:
+          type: string
+        mpn:
+          type: string
+        ean:
+          type: string
+        sku:
+          type: string
+        specs:
+          type: object
+          additionalProperties: true
+        imageUrls:
+          type: array
+          items:
+            type: string
+        imageAssetIds:
+          type: array
+          items:
+            type: string
+        referencePriceCents:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+    PriceHistory:
+      type: object
+      required:
+        - id
+        - productId
+        - priceCents
+        - currency
+        - source
+        - observedAt
+        - createdAt
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        priceCents:
+          type: integer
+        currency:
+          type: string
+        source:
+          type: string
+          enum: [LISTING_PUBLISHED, LISTING_SOLD, MANUAL]
+        observedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    ListingMedia:
+      type: object
+      required:
+        - photoUrls
+      description: >
+        Gallery for the used unit. Create requires at least one resolved photo
+        and one resolved video (via asset ids or legacy URLs).
+        assetIds are LISTING image assets only; videoAssetId is one LISTING video asset.
+      properties:
+        photoUrls:
+          type: array
+          items:
+            type: string
+        videoUrl:
+          type: string
+        coverPhotoUrl:
+          type: string
+        assetIds:
+          type: array
+          items:
+            type: string
+        videoAssetId:
+          type: string
+          description: READY LISTING video/mp4 asset owned by the seller
+    ListingShipping:
+      type: object
+      required:
+        - modes
+      properties:
+        modes:
+          type: array
+          items:
+            type: string
+            enum: [PICKUP, SHIPPING]
+        packageWeightGrams:
+          type: number
+        packageLengthCm:
+          type: number
+        packageWidthCm:
+          type: number
+        packageHeightCm:
+          type: number
+        freeShipping:
+          type: boolean
+    ListingWarranty:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [NONE, SELLER, MANUFACTURER_REMAINING]
+        months:
+          type: integer
+    SellerVerificationSummary:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_REVIEW, APPROVED, CHANGES_REQUESTED, REJECTED]
+        decisionReason:
+          type: string
+          description: Present when status is REJECTED or CHANGES_REQUESTED and a seller-facing reason exists
+        requiredChanges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequiredChange'
+        previousCaseId:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    RequiredChange:
+      type: object
+      required: [target, reason]
+      properties:
+        target:
+          type: string
+          enum: [PHOTO, VIDEO, DESCRIPTION]
+        reason:
+          type: string
+        assetId:
+          type: string
+        checklistItemId:
+          type: string
+    RevisionBaseline:
+      type: object
+      properties:
+        assetIds:
+          type: array
+          items:
+            type: string
+        videoAssetId:
+          type: string
+        description:
+          type: string
+    RequestVerificationChanges:
+      type: object
+      required: [summary, requiredChanges]
+      properties:
+        summary:
+          type: string
+        requiredChanges:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RequiredChangeInput'
+    RequiredChangeInput:
+      type: object
+      required: [target, reason]
+      properties:
+        target:
+          type: string
+          enum: [PHOTO, VIDEO, DESCRIPTION]
+        reason:
+          type: string
+        assetId:
+          type: string
+        checklistItemId:
+          type: string
+    SellerListing:
+      allOf:
+        - $ref: '#/components/schemas/Listing'
+        - type: object
+          properties:
+            verificationCase:
+              $ref: '#/components/schemas/SellerVerificationSummary'
+    ListingPage:
+      type: object
+      required:
+        - items
+        - total
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Listing'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    SellerListingPage:
+      type: object
+      required:
+        - items
+        - total
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SellerListing'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+    Listing:
+      type: object
+      required:
+        - id
+        - sellerId
+        - productId
+        - title
+        - condition
+        - priceCents
+        - currency
+        - media
+        - shipping
+        - acceptsOffers
+        - buyNowEnabled
+        - quantity
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        sellerId:
+          type: string
+        productId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        condition:
+          type: string
+          enum: [NEW, LIKE_NEW, GOOD, FAIR, POOR]
+        priceCents:
+          type: integer
+        listPriceCents:
+          type: integer
+        currency:
+          type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        media:
+          $ref: '#/components/schemas/ListingMedia'
+        shipping:
+          $ref: '#/components/schemas/ListingShipping'
+        locationApprox:
+          type: string
+        warranty:
+          $ref: '#/components/schemas/ListingWarranty'
+        acceptsOffers:
+          type: boolean
+        buyNowEnabled:
+          type: boolean
+        quantity:
+          type: integer
+        status:
+          type: string
+          enum: [DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD, REJECTED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewListing:
+      type: object
+      required:
+        - id
+        - sellerId
+        - productId
+        - title
+        - condition
+        - priceCents
+        - media
+        - shipping
+      properties:
+        id:
+          type: string
+        sellerId:
+          type: string
+        productId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        condition:
+          type: string
+          enum: [NEW, LIKE_NEW, GOOD, FAIR, POOR]
+        priceCents:
+          type: integer
+        listPriceCents:
+          type: integer
+        currency:
+          type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        media:
+          $ref: '#/components/schemas/ListingMedia'
+        shipping:
+          $ref: '#/components/schemas/ListingShipping'
+        locationApprox:
+          type: string
+        warranty:
+          $ref: '#/components/schemas/ListingWarranty'
+        acceptsOffers:
+          type: boolean
+        buyNowEnabled:
+          type: boolean
+        quantity:
+          type: integer
+    UpdateListing:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        condition:
+          type: string
+          enum: [NEW, LIKE_NEW, GOOD, FAIR, POOR]
+        priceCents:
+          type: integer
+        listPriceCents:
+          type: integer
+        currency:
+          type: string
+        attributes:
+          type: object
+          additionalProperties: true
+        media:
+          $ref: '#/components/schemas/ListingMedia'
+        shipping:
+          $ref: '#/components/schemas/ListingShipping'
+        locationApprox:
+          type: string
+        warranty:
+          $ref: '#/components/schemas/ListingWarranty'
+        acceptsOffers:
+          type: boolean
+        buyNowEnabled:
+          type: boolean
+    ListingEvent:
+      type: object
+      required:
+        - id
+        - listingId
+        - toStatus
+        - occurredAt
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        fromStatus:
+          type: string
+          nullable: true
+          enum: [DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD, null]
+        toStatus:
+          type: string
+          enum: [DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD, REJECTED]
+        reason:
+          type: string
+        actorId:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+
+    VerificationCase:
+      type: object
+      required: [id, listingId, status, createdAt]
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_REVIEW, APPROVED, CHANGES_REQUESTED, REJECTED]
+        checklist:
+          type: object
+          additionalProperties: true
+        decisionReason:
+          type: string
+        moderatorId:
+          type: string
+        requiredChanges:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequiredChange'
+        revisionBaseline:
+          $ref: '#/components/schemas/RevisionBaseline'
+        previousCaseId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ModerationQueueStats:
+      type: object
+      required: [total, pending, inReview, approved, changesRequested, rejected]
+      properties:
+        total:
+          type: integer
+        pending:
+          type: integer
+        inReview:
+          type: integer
+        approved:
+          type: integer
+        changesRequested:
+          type: integer
+        rejected:
+          type: integer
+    ModerationQueueItem:
+      allOf:
+        - $ref: '#/components/schemas/VerificationCase'
+        - type: object
+          required: [listingTitle, sellerId, sellerDisplayName]
+          properties:
+            listingTitle:
+              type: string
+            listingStatus:
+              type: string
+              enum: [DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD, REJECTED]
+            listingCoverPhotoUrl:
+              type: string
+            sellerId:
+              type: string
+            sellerDisplayName:
+              type: string
+            aiAnalysisScore:
+              type: integer
+              minimum: 0
+              maximum: 100
+              description: Latest SUBMIT-scope AI validation score when available
+    ModerationQueuePage:
+      type: object
+      required: [items, total, limit, offset, stats]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModerationQueueItem'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        stats:
+          $ref: '#/components/schemas/ModerationQueueStats'
+    NewVerificationCase:
+      type: object
+      required: [id, listingId]
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        checklist:
+          type: object
+          additionalProperties: true
+    EvidenceItem:
+      type: object
+      required: [id, caseId, type, storageKey, createdAt]
+      properties:
+        id:
+          type: string
+        caseId:
+          type: string
+        type:
+          type: string
+          enum: [PHOTO, VIDEO, PROOF_CODE_HASH]
+        storageKey:
+          type: string
+        assetId:
+          type: string
+        contentHash:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    NewEvidenceItem:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [PHOTO, VIDEO, PROOF_CODE_HASH]
+        storageKey:
+          type: string
+        assetId:
+          type: string
+        contentHash:
+          type: string
+    Seal:
+      type: object
+      required: [id, listingId, caseId, type, status, createdAt]
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        caseId:
+          type: string
+        type:
+          type: string
+          enum: [POSSESSION, FUNCTIONING, IDENTITY, PROTECTED_PURCHASE, WARRANTY]
+        status:
+          type: string
+          enum: [GRANTED, SUSPENDED, EXPIRED, REVOKED]
+        grantedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TrustEvent:
+      type: object
+      required: [id, sellerId, type, sourceEventId, payload, occurredAt, createdAt]
+      properties:
+        id:
+          type: string
+        sellerId:
+          type: string
+        type:
+          type: string
+          enum: [USER_VERIFIED, SEAL_GRANTED, SEAL_REVOKED, ORDER_COMPLETED]
+        sourceEventId:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    NewTrustEvent:
+      type: object
+      required: [id, sellerId, type, sourceEventId, payload]
+      properties:
+        id:
+          type: string
+        sellerId:
+          type: string
+        type:
+          type: string
+          enum: [USER_VERIFIED, SEAL_GRANTED, SEAL_REVOKED, ORDER_COMPLETED]
+        sourceEventId:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+    TrustScore:
+      type: object
+      required: [id, sellerId, score, components, computedAt]
+      properties:
+        id:
+          type: string
+        sellerId:
+          type: string
+        score:
+          type: number
+        components:
+          type: object
+          additionalProperties:
+            type: number
+        computedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SellerLevel:
+      type: object
+      required: [id, sellerId, level]
+      properties:
+        id:
+          type: string
+        sellerId:
+          type: string
+        level:
+          type: string
+          enum: [NEW, EVOLVING, TRUSTED, EXCELLENT]
+        updatedAt:
+          type: string
+          format: date-time
+    SearchDocument:
+      type: object
+      required:
+        - id
+        - listingId
+        - productId
+        - categoryId
+        - sellerId
+        - title
+        - condition
+        - status
+        - priceCents
+        - currency
+        - searchText
+        - sourceOccurredAt
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        productId:
+          type: string
+        categoryId:
+          type: string
+        sellerId:
+          type: string
+        title:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        condition:
+          type: string
+        status:
+          type: string
+        priceCents:
+          type: number
+        listPriceCents:
+          type: number
+        currency:
+          type: string
+        locationApprox:
+          type: string
+        shippingModes:
+          type: array
+          items:
+            type: string
+        freeShipping:
+          type: boolean
+        trustScore:
+          type: number
+        sellerLevel:
+          type: string
+        sealTypes:
+          type: array
+          items:
+            type: string
+        facets:
+          type: object
+          additionalProperties: true
+        searchText:
+          type: string
+        thumbnailUrl:
+          type: string
+        embedding:
+          type: array
+          nullable: true
+          items:
+            type: number
+        sourceOccurredAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SearchReconcileResult:
+      type: object
+      required:
+        - listingsReindexed
+        - synonymsUpserted
+      properties:
+        listingsReindexed:
+          type: integer
+          minimum: 0
+          description: Count of PUBLISHED listings successfully upserted into search_documents
+        synonymsUpserted:
+          type: integer
+          minimum: 0
+          description: Count of taxonomy terms upserted into synonyms projection
+    Synonym:
+      type: object
+      required: [id, normalizedTerm, targetType, targetId, canonicalName]
+      properties:
+        id:
+          type: string
+        normalizedTerm:
+          type: string
+        targetType:
+          type: string
+          enum: [CATEGORY, SERVICE]
+        targetId:
+          type: string
+        canonicalName:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    NewMediaUpload:
+      type: object
+      required: [purpose, ownerId, contentType, byteSize]
+      properties:
+        id:
+          type: string
+        purpose:
+          type: string
+          enum: [PRODUCT, LISTING, EVIDENCE]
+        ownerId:
+          type: string
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp, video/mp4]
+          description: >
+            Images max 10 MiB. video/mp4 max 50 MiB and LISTING purpose only.
+        byteSize:
+          type: integer
+          minimum: 1
+          maximum: 52428800
+    MediaVariant:
+      type: object
+      required: [size, format, width, height, byteSize]
+      properties:
+        size:
+          type: string
+          enum: [THUMBNAIL, CARD, FULL, ORIGINAL]
+        format:
+          type: string
+          enum: [WEBP, JPEG, MP4]
+        width:
+          type: integer
+        height:
+          type: integer
+        byteSize:
+          type: integer
+        publicUrl:
+          type: string
+    MediaAsset:
+      type: object
+      required:
+        - id
+        - purpose
+        - ownerId
+        - status
+        - contentType
+        - byteSize
+        - variants
+        - createdAt
+      properties:
+        id:
+          type: string
+        purpose:
+          type: string
+          enum: [PRODUCT, LISTING, EVIDENCE]
+        ownerId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING_UPLOAD, UPLOADED, PROCESSING, READY, FAILED]
+        contentType:
+          type: string
+        byteSize:
+          type: integer
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaVariant'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    MediaUploadGrant:
+      allOf:
+        - $ref: '#/components/schemas/MediaAsset'
+        - type: object
+          required: [upload]
+          properties:
+            upload:
+              type: object
+              required: [url, expiresAt]
+              properties:
+                url:
+                  type: string
+                headers:
+                  type: object
+                  additionalProperties:
+                    type: string
+                expiresAt:
+                  type: string
+                  format: date-time
+    MediaContentGrant:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    Favorite:
+      type: object
+      required: [id, userId, targetType, targetId, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        targetType:
+          type: string
+          enum: [PRODUCT, LISTING]
+        targetId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    NewFavorite:
+      type: object
+      required: [id, targetType, targetId]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+          description: Ignored for ownership; userId is taken from x-user-id (ActorContext)
+        targetType:
+          type: string
+          enum: [PRODUCT, LISTING]
+        targetId:
+          type: string
+    NewAuthRegistration:
+      type: object
+      required:
+        - id
+        - fullName
+        - email
+        - phone
+        - cpf
+        - birthDate
+        - password
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        cpf:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        password:
+          type: string
+          format: password
+          minLength: 1
+    AuthLogin:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+          format: password
+    AuthRefresh:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+    AuthSession:
+      type: object
+      required:
+        - user
+        - accessToken
+        - refreshToken
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+    UpdateUserGroups:
+      type: object
+      required:
+        - groups
+      properties:
+        groups:
+          type: array
+          items:
+            type: string
+            enum: [app-user, partner, admin, backoffice]
     NewUser:
       type: object
       required:
         - id
-        - name
+        - fullName
         - email
+        - phone
+        - cpf
+        - birthDate
       properties:
         id:
           type: string
-          description: The unique identifier for the user
-        name:
+        fullName:
           type: string
-          description: The user's name
         email:
           type: string
-          description: The user's email address
-        createdAt:
+        phone:
           type: string
-          format: date-time
-          description: The creation timestamp (optional)
+        cpf:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        verified:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, BLOCKED, PENDING_VERIFICATION]
     UpdateUser:
       type: object
+      description: Owner identity fields. verified, phoneVerified and status are not writable here; use POST /users/{id}/verify (BACKOFFICE/ADMIN).
       properties:
-        name:
+        fullName:
           type: string
-          description: The user's name
         email:
           type: string
-          description: The user's email address
+        phone:
+          type: string
+        cpf:
+          type: string
+        birthDate:
+          type: string
+          format: date
     Error:
       type: object
       required:
@@ -352,3 +4437,67 @@ components:
           format: date-time
           description: When the operation was completed
           example: '2025-07-15T17:30:00.000Z'
+    AnalysisChecklistItem:
+      type: object
+      required:
+        - id
+        - status
+        - weight
+        - reason
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PASS, FAIL, UNCERTAIN]
+        weight:
+          type: integer
+        reason:
+          type: string
+        evidenceRef:
+          type: string
+    ListingAnalysis:
+      type: object
+      required:
+        - id
+        - listingId
+        - scope
+        - status
+        - score
+        - items
+        - promptVersion
+        - idempotencyKey
+        - createdAt
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        scope:
+          type: string
+          enum: [DRAFT, SUBMIT]
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, UNAVAILABLE, FAILED]
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalysisChecklistItem'
+        modelId:
+          type: string
+        promptVersion:
+          type: string
+        idempotencyKey:
+          type: string
+        failureReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

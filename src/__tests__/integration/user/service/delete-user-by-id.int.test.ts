@@ -3,6 +3,7 @@ import { EErrorCode } from '../../../../domain/common/errors/enums/EErrorCode';
 import { UserModel } from '../../../../infraestructure/db/mongo/models/user.model';
 import { ErrorCatalog } from '../../../../infraestructure/i18n/error-catalog';
 import { validUserMock } from '../../../__mocks__/user.mock';
+import { ownerActor } from '../../../__mocks__/actor.mock';
 
 const userService = UserServiceFactory.create();
 
@@ -11,7 +12,10 @@ describe('When we try to delete a user by id', () => {
     const userData = validUserMock();
     await UserModel.create(userData);
 
-    const result = await userService.deleteUserById(userData.id);
+    const result = await userService.deleteUserById(
+      userData.id,
+      ownerActor(userData.id),
+    );
 
     expect(result?.id).toBe(userData.id);
   });
@@ -20,7 +24,7 @@ describe('When we try to delete a user by id', () => {
     const userData = validUserMock();
     await UserModel.create(userData);
 
-    await userService.deleteUserById(userData.id);
+    await userService.deleteUserById(userData.id, ownerActor(userData.id));
     const found = await UserModel.findOne({ id: userData.id });
 
     expect(found).toBeNull();
@@ -28,7 +32,10 @@ describe('When we try to delete a user by id', () => {
 
   it('should reject with RESOURCE_NOT_FOUND when the user does not exist', async () => {
     await expect(
-      userService.deleteUserById('nonexistent-id'),
+      userService.deleteUserById(
+        'nonexistent-id',
+        ownerActor('nonexistent-id'),
+      ),
     ).rejects.toMatchObject({
       status: 404,
       errorCode: EErrorCode.RESOURCE_NOT_FOUND,

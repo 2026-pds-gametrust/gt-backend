@@ -128,3 +128,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# E2E runtime env (contains local secrets; use .env.e2e.example as template)
+.env.e2e
+
+# E2E request evidence (regenerated per run)
+docs/qa/e2e-phase1/_evidence/

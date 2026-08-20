@@ -1,9 +1,9 @@
-import { UserRepositoryWrite } from '../../../../../infraestructure/repository/user/user.repository.write';
+import { UserRepositoryWrite } from '../../../../../infraestructure/repository/identity/user.repository.write';
 import { validUserMock } from '../../../../__mocks__/user.mock';
 
 const repositoryWrite = new UserRepositoryWrite();
 
-describe('When we try to create a user', () => {
+describe('when we create a user via repository', () => {
   it('should return the created user as a domain object', async () => {
     const user = validUserMock();
 
@@ -11,7 +11,7 @@ describe('When we try to create a user', () => {
 
     expect(created).toMatchObject({
       id: user.id,
-      name: user.name,
+      fullName: user.fullName,
       email: user.email,
     });
     expect(created.createdAt).toBeDefined();

@@ -1,0 +1,5 @@
+export enum EPriceHistorySource {
+  LISTING_PUBLISHED = 'LISTING_PUBLISHED',
+  LISTING_SOLD = 'LISTING_SOLD',
+  MANUAL = 'MANUAL',
+}

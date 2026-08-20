@@ -101,7 +101,7 @@ Test data:
 - [ ] Adapters remain pure
 - [ ] Factories only compose dependencies
 - [ ] OpenAPI is synchronized
-- [ ] Kafka interface is in Domain and implementation in Infraestructure
+- [ ] Messaging (SQS) interface is in Domain and implementation in Infraestructure
 - [ ] Tests are under `src/__tests__`
 
 ## Environment and data

@@ -10,9 +10,10 @@ import { Server as httpServer } from 'http';
 import { IController } from './interfaces/IController';
 import mongoose from 'mongoose';
 import * as OpenApiValidator from 'express-openapi-validator';
+import cors from 'cors';
 import helmet from 'helmet';
 import { HttpError } from 'express-openapi-validator/dist/framework/types';
-
+import { EErrorCode } from '../common/errors/enums/EErrorCode';
 
 export class Server {
   public app: Application;
@@ -25,12 +26,10 @@ export class Server {
 
   private readonly timeoutMilliseconds?: number;
 
-  private readonly middleWaresToStart = [
-    express.json({ limit: '3mb' }),
-    express.urlencoded({ limit: '3mb', extended: true }),
-    ContextAsyncHooks.getExpressMiddlewareTracking(),
-    helmet(),
-  ];
+  private readonly originAllowed: string[] | RegExp[];
+
+  private readonly corsWithCredentials: boolean;
+
   constructor(appInit: {
     port: number;
     originAllowed?: string[] | RegExp[];
@@ -49,16 +48,39 @@ export class Server {
     this.apiSpecLocation = appInit.apiSpecLocation;
     this.DATABASE_URI = appInit.databaseURI;
     this.timeoutMilliseconds = appInit.timeoutMilliseconds;
+    this.originAllowed = appInit.originAllowed ?? [];
+    this.corsWithCredentials = appInit.corsWithCredentials ?? false;
 
     this.app.get('/health', (req: Request, res: Response) => {
       res.status(200).json({ status: 'OK' });
     });
 
-    this.middlewares(this.middleWaresToStart);
+    this.middlewares([
+      ...this.buildStartMiddlewares(),
+      ...(appInit.middlewaresToStart || []),
+    ]);
 
     this.routes(appInit.controllers || []);
 
     this.customizers();
+  }
+
+  private buildStartMiddlewares(): RequestHandler[] {
+    return [
+      express.json({ limit: '3mb' }),
+      express.urlencoded({ limit: '3mb', extended: true }),
+      ContextAsyncHooks.getExpressMiddlewareTracking(),
+      helmet({
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+      }),
+      cors({
+        origin: this.originAllowed.length > 0 ? this.originAllowed : false,
+        credentials: this.corsWithCredentials,
+        methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+        optionsSuccessStatus: 204,
+      }),
+    ];
   }
 
   private middlewares(middleWares: Array<RequestHandler>) {
@@ -68,17 +90,48 @@ export class Server {
         apiSpec: this.apiSpecLocation || '',
         validateApiSpec: true,
         validateResponses: true,
+        validateSecurity: false,
       }),
     );
   }
   private customizers() {
     this.app.use(
-      (err: Error, req: Request, res: Response, _next: NextFunction) => {
+      (err: Error, _req: Request, res: Response, _next: NextFunction) => {
         if (err instanceof HttpError) {
           if (err.status === 500) {
-            Logger.error(JSON.stringify(err));
+            const validationErrors = Array.isArray(err.errors)
+              ? err.errors.map((item) => ({
+                  path: item.path,
+                  message: item.message,
+                  errorCode: item.error_code,
+                }))
+              : undefined;
+            Logger.error(
+              JSON.stringify({
+                eventName: 'openapi.validator.error',
+                status: err.status,
+                method: _req.method,
+                path: _req.path,
+                errors: validationErrors,
+              }),
+            );
+            res.status(500).json({ message: 'Internal Server Error' });
+            return;
           }
-          res.status(err.status).json({ message: err.message });
+          if (err.status === 401) {
+            res.status(401).json({
+              error: 'Unauthorized. Send a valid Bearer token.',
+              code: EErrorCode.AUTH_UNAUTHORIZED,
+            });
+            return;
+          }
+          res.status(err.status || 400).json({
+            error: 'Invalid request',
+            code:
+              err.status === 404
+                ? EErrorCode.RESOURCE_NOT_FOUND
+                : EErrorCode.FIELD_INVALID,
+          });
           return;
         }
         if (err instanceof Error) {

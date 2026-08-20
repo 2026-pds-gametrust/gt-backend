@@ -14,6 +14,11 @@ Complements [SPECS.md](SPECS.md) (artifacts) and [AGENTS.md](../AGENTS.md) (shor
 | **C — Specialist only** | Requirements only, design only, QA only, review only, commit/PR only | Call that agent directly |
 | **D — Architecture discovery** | Repo **diverges** from kit layered / [`examples/canonical-user/`](../examples/canonical-user/) (or user explicitly overrides). **Skip** if the service already follows that layered shape. | See [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md) (`agt-architecture-probe` → `agt-pattern-miner` → `agt-pattern-steward` + gate) |
 
+**Path D quick start:** prompts and Entry by tool live in
+[README — Architecture discovery workflow](../README.md#architecture-discovery-workflow)
+and the Quick start block in [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md).
+Example: *Map this repository architecture as-is (Path D). Profile boundaries and mine recurring patterns.*
+
 Skill map (scaffold vs SDD vs review): [SKILLS.md](SKILLS.md). Canonical shapes: [`examples/canonical-user/`](../examples/canonical-user/).
 
 ---
@@ -39,7 +44,7 @@ Idea / Jira / chat
         ↓
   agt-test-runner    →  healthy Jest suite
         ↓
-  agt-code-review    →  typed findings (read-only)
+  agt-code-review  ∥  agt-security-review  →  typed findings (read-only)
         ↓
   agt-quality-assurance (VERIFY)  →  qa-report.md
         ↓
@@ -98,6 +103,7 @@ Agents must **read and preserve** these fields — never drop them.
 | [`agt-dev-backend`](agents/agt-dev-backend.md) | Implement the approved slice | Reinterpret an ambiguous rule |
 | [`agt-test-runner`](agents/agt-test-runner.md) | Stabilize Jest / technical regression | Redefine product ACs |
 | [`agt-code-review`](agents/agt-code-review.md) | Spec ↔ code review (read-only) | Implement fixes |
+| [`agt-security-review`](agents/agt-security-review.md) | Adversarial security pass (read-only) | Judge spec conformance — that is code review |
 | [`agt-architecture-review`](agents/agt-architecture-review.md) | Post-code layer audit | Write design (that is `agt-architecture`) |
 | [`agt-code-quality`](agents/agt-code-quality.md) | Naming + REST | Replace spec-aware code review |
 | [`agt-verifier`](agents/agt-verifier.md) | Delivery evidence | Soften asserts |
@@ -160,9 +166,12 @@ Out-of-scope change          → orchestrator + PO
 
 `agt-test-runner` leaves the Jest suite healthy (tooling regression ≠ product acceptance).
 
-### 6. Code review
+### 6. Code review ∥ Security review
 
-`agt-code-review` compares requirements ↔ design ↔ tasks ↔ implementation ↔ tests.
+Both reviewers read the same diff and run in parallel — this phase is **mandatory** on features:
+
+1. `agt-code-review` compares requirements ↔ design ↔ tasks ↔ implementation ↔ tests.
+2. `agt-security-review` runs the adversarial pass (authorization and ownership, injection, mass assignment, secrets, exposure, resource limits, SSRF, contract security).
 
 Finding categories:
 
@@ -172,6 +181,7 @@ NON_BLOCKING_IMPROVEMENT | STYLE | QUESTION
 ```
 
 Blocking → back to `agt-dev-backend`. Style / non-blocking improvements do not stop the flow.
+`BLOCKING_SECURITY` blocks the gate like any other blocking finding — it is never accepted as a “known risk” without explicit human risk acceptance.
 
 ### 7. Test author + QA VERIFY
 
@@ -208,6 +218,7 @@ Never weaken an assert to go green.
 | Design only | `agt-architecture` (requirements already approved) |
 | QA only | `agt-quality-assurance` PLAN / VERIFY (AUTOMATE → dispatch `agt-test-author`) |
 | Review only | `agt-code-review` or `architecture-review` ∥ `code-quality` |
+| Security review only | `agt-security-review` (or `@skill-review-security`) |
 | Commit / PR | `agt-verifier` → `agt-github-workflow` (explicit request) |
 
 ---

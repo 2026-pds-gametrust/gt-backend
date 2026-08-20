@@ -1,0 +1,7 @@
+export enum EMediaAssetStatus {
+  PENDING_UPLOAD = 'PENDING_UPLOAD',
+  UPLOADED = 'UPLOADED',
+  PROCESSING = 'PROCESSING',
+  READY = 'READY',
+  FAILED = 'FAILED',
+}

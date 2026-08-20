@@ -1,0 +1,28 @@
+services:
+  localstack:
+    image: localstack/localstack:4
+    ports:
+      - '4566:4566'
+    environment:
+      - SERVICES=sqs,sns,s3
+      - DEBUG=0
+    volumes:
+      - localstack_data:/var/lib/localstack
+
+  mongodb:
+    image: mongo:7
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}) }" | mongosh --quiet
+      interval: 5s
+      timeout: 30s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  localstack_data:
+  mongodb_data:

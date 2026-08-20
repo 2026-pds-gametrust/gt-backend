@@ -49,7 +49,7 @@ Every approved `AC-*` / `NFR-*` must be technically supported (or explicitly blo
 ## HTTP / event contracts
 
 - Routes, methods, request/response shapes.
-- Kafka message types (if any) — interface in Domain, implementation in Infraestructure.
+- Event messages / SQS (if any) — interface in Domain, implementation in Infraestructure (see `docs/architecture/05-sqs-messaging.md`).
 
 ## Persistence, compatibility and migration
 
@@ -109,7 +109,7 @@ Answer explicitly for any data change:
 
 - Follow [docs/architecture-and-layers.md](../../architecture-and-layers.md) and [AGENTS.md](../../../AGENTS.md).
 - Business rules in **Service**; repositories return `null` (no 404/409).
-- Domain must not import Infraestructure (no Mongoose, `IM*`, concrete Kafka).
+- Domain must not import Infraestructure (no Mongoose, `IM*`, concrete SQS messaging).
 
 ## Approval
 

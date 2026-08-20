@@ -1,5 +1,5 @@
 import { Types, model } from 'mongoose';
-import { IUser } from '../../../../domain/user/entity/interfaces/user.interface';
+import { IUser } from '../../../../domain/identity/entity/interfaces/user.interface';
 import { UserSchema } from '../schema/user.schema';
 
 export interface IMUser extends Omit<IUser, '_id'> {

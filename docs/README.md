@@ -19,7 +19,7 @@ English is **normative** for identifiers, HTTP paths, and `ARCH-*` / `DEC-*`. If
 | Messaging (SNS/SQS) | [en/architecture/messaging.md](./en/architecture/messaging.md) |
 | Architecture canon (`ARCH-*` / `DEC-*`) | [architecture/](./architecture/) |
 | Entity catalog | [entities/](./entities/) |
-| DeepWiki | [`.devin/wiki.json`](../.devin/wiki.json) |
+| DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) · [`.devin/wiki.json`](../.devin/wiki.json) |
 
 ### What lives where
 
@@ -29,7 +29,7 @@ English is **normative** for identifiers, HTTP paths, and `ARCH-*` / `DEC-*`. If
 | HTTP API (generated) | [`en/api/`](./en/api/) · [`pt-BR/api/`](./pt-BR/api/) | API consumers |
 | Architecture canon | [`architecture/`](./architecture/) | Agents and reviewers citing `ARCH-*` / `DEC-*` |
 | Entity catalog | [`entities/`](./entities/) | Domain authors |
-| DeepWiki | [`.devin/wiki.json`](../.devin/wiki.json) | AI wiki + chat (English, generated from code) |
+| DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) · [`.devin/wiki.json`](../.devin/wiki.json) | AI wiki + chat (English, generated from code) |
 
 ### Not published (working artifacts)
 
@@ -68,7 +68,7 @@ O inglês é **normativo** para identificadores, paths HTTP e IDs `ARCH-*` / `DE
 | Mensageria (SNS/SQS) | [pt-BR/architecture/messaging.md](./pt-BR/architecture/messaging.md) |
 | Canon de arquitetura (`ARCH-*` / `DEC-*`) | [architecture/](./architecture/) |
 | Catálogo de entidades | [entities/](./entities/) |
-| DeepWiki | [`.devin/wiki.json`](../.devin/wiki.json) |
+| DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) · [`.devin/wiki.json`](../.devin/wiki.json) |
 
 ### O que fica onde
 
@@ -78,7 +78,7 @@ O inglês é **normativo** para identificadores, paths HTTP e IDs `ARCH-*` / `DE
 | API HTTP (gerada) | [`en/api/`](./en/api/) · [`pt-BR/api/`](./pt-BR/api/) | Consumidores da API |
 | Canon de arquitetura | [`architecture/`](./architecture/) | Agents e review citando `ARCH-*` / `DEC-*` |
 | Catálogo de entidades | [`entities/`](./entities/) | Autores de domínio |
-| DeepWiki | [`.devin/wiki.json`](../.devin/wiki.json) | Wiki + chat (inglês, gerado do código) |
+| DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) · [`.devin/wiki.json`](../.devin/wiki.json) | Wiki + chat (inglês, gerado do código) |
 
 ### Não publicado (artefatos de trabalho)
 

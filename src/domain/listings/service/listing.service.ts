@@ -131,7 +131,6 @@ export class ListingService implements IListingService {
       params.media,
       params.sellerId,
     );
-    this.assertCreateMediaReady(media);
 
     const entity = new ListingServiceEntity({
       id: params.id,
@@ -294,9 +293,9 @@ export class ListingService implements IListingService {
   private async loadLatestVerificationByListingIds(
     listingIds: string[],
   ): Promise<Map<string, ISellerVerificationSummary>> {
-    const result = new Map<string, ISellerVerificationSummary>();
+    const summariesByListingId = new Map<string, ISellerVerificationSummary>();
     if (!this.verificationCaseRepositoryRead || listingIds.length === 0) {
-      return result;
+      return summariesByListingId;
     }
 
     const cases =
@@ -312,10 +311,13 @@ export class ListingService implements IListingService {
     }
 
     for (const [listingId, verificationCase] of latestByListing) {
-      result.set(listingId, this.toSellerVerificationSummary(verificationCase));
+      summariesByListingId.set(
+        listingId,
+        this.toSellerVerificationSummary(verificationCase),
+      );
     }
 
-    return result;
+    return summariesByListingId;
   }
 
   private toSellerVerificationSummary(
@@ -799,6 +801,58 @@ export class ListingService implements IListingService {
     return updated;
   }
 
+  private async publishListingStatusChange(
+    existing: IListing,
+    updated: IListing,
+    toStatus: EListingStatus,
+    actorId: string,
+    reason?: string,
+  ): Promise<IListing> {
+    await this.appendStatusEvent({
+      listingId: updated.id,
+      fromStatus: existing.status,
+      toStatus,
+      actorId,
+      reason,
+    });
+
+    const correlationId = randomUUID();
+    const statusPayload = {
+      listingId: updated.id,
+      productId: updated.productId,
+      sellerId: updated.sellerId,
+      fromStatus: existing.status,
+      toStatus,
+    };
+
+    await this.eventPublisher.publish(
+      createEventEnvelope({
+        eventId: randomUUID(),
+        eventType: 'listings.listing.status_changed',
+        aggregateId: updated.id,
+        producerModule: 'listings',
+        correlationId,
+        payload: statusPayload,
+      }),
+    );
+
+    const specificEventType = this.specificStatusEventType(toStatus);
+    if (specificEventType) {
+      await this.eventPublisher.publish(
+        createEventEnvelope({
+          eventId: randomUUID(),
+          eventType: specificEventType,
+          aggregateId: updated.id,
+          producerModule: 'listings',
+          correlationId,
+          payload: statusPayload,
+        }),
+      );
+    }
+
+    return updated;
+  }
+
   private specificStatusEventType(
     toStatus: EListingStatus,
   ): string | undefined {
@@ -810,6 +864,12 @@ export class ListingService implements IListingService {
     }
     if (toStatus === EListingStatus.PAUSED) {
       return 'listings.listing.paused';
+    }
+    if (toStatus === EListingStatus.RESERVED) {
+      return 'listings.listing.reserved';
+    }
+    if (toStatus === EListingStatus.SOLD) {
+      return 'listings.listing.sold';
     }
     return undefined;
   }
@@ -825,25 +885,6 @@ export class ListingService implements IListingService {
         errorCode: EErrorCode.RESOURCE_CONFLICT,
         message: 'Invalid listing status transition',
         details: { from, to },
-      } as IThrowedError;
-    }
-  }
-
-  private assertCreateMediaReady(media: IListingMedia): void {
-    if (!media?.photoUrls?.length) {
-      throw {
-        status: 400,
-        errorCode: EErrorCode.FIELD_INVALID,
-        message: 'At least one photo is required to create a listing',
-        details: { field: 'media.photoUrls' },
-      } as IThrowedError;
-    }
-    if (!media.videoUrl?.trim()) {
-      throw {
-        status: 400,
-        errorCode: EErrorCode.FIELD_INVALID,
-        message: 'A video is required to create a listing',
-        details: { field: 'media.videoUrl' },
       } as IThrowedError;
     }
   }
@@ -1040,5 +1081,154 @@ export class ListingService implements IListingService {
       assetIds,
       videoAssetId,
     };
+  }
+
+  async getPublishedListingForCheckout(
+    listingId: string,
+  ): Promise<IListing | null> {
+    const listing = await this.listingRepositoryRead.findListingById(listingId);
+    if (!listing || listing.status !== EListingStatus.PUBLISHED) {
+      return null;
+    }
+    return listing;
+  }
+
+  async reserveListingForOrder(
+    listingId: string,
+    orderId: string,
+    actor: IActorContext,
+  ): Promise<IListing> {
+    assertActorPresent(actor);
+    await this.listingRepositoryWrite.expireStaleReservations(new Date());
+
+    const existing = await this.listingRepositoryRead.findListingById(listingId);
+    if (!existing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { listingId },
+      } as IThrowedError;
+    }
+
+    if (
+      existing.status !== EListingStatus.PUBLISHED ||
+      !existing.buyNowEnabled
+    ) {
+      throw {
+        status: 409,
+        errorCode: EErrorCode.LISTING_NOT_AVAILABLE_FOR_PURCHASE,
+        message: 'Listing is not available for buy now',
+        details: { listingId, status: existing.status },
+      } as IThrowedError;
+    }
+
+    const reservedAt = new Date();
+    const reservationExpiresAt = new Date(
+      reservedAt.getTime() + 15 * 60 * 1000,
+    );
+
+    const reserved = await this.listingRepositoryWrite.reserveListingForOrder({
+      listingId,
+      orderId,
+      reservedAt,
+      reservationExpiresAt,
+    });
+
+    if (!reserved) {
+      throw {
+        status: 409,
+        errorCode: EErrorCode.LISTING_ALREADY_RESERVED,
+        message: 'Listing is already reserved or sold',
+        details: { listingId },
+      } as IThrowedError;
+    }
+
+    return this.publishListingStatusChange(
+      existing,
+      reserved,
+      EListingStatus.RESERVED,
+      actor.actorId,
+      'Reserved for order',
+    );
+  }
+
+  async releaseListingReservation(
+    listingId: string,
+    orderId: string,
+    actor: IActorContext,
+  ): Promise<IListing> {
+    assertActorPresent(actor);
+    const existing = await this.listingRepositoryRead.findListingById(listingId);
+    if (!existing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { listingId },
+      } as IThrowedError;
+    }
+
+    const released =
+      await this.listingRepositoryWrite.releaseListingReservation({
+        listingId,
+        orderId,
+      });
+
+    if (!released) {
+      throw {
+        status: 409,
+        errorCode: EErrorCode.RESOURCE_CONFLICT,
+        message: 'Listing reservation could not be released',
+        details: { listingId, orderId },
+      } as IThrowedError;
+    }
+
+    return this.publishListingStatusChange(
+      existing,
+      released,
+      EListingStatus.PUBLISHED,
+      actor.actorId,
+      'Reservation released',
+    );
+  }
+
+  async markListingSoldForOrder(
+    listingId: string,
+    orderId: string,
+    actor: IActorContext,
+  ): Promise<IListing> {
+    assertActorPresent(actor);
+    const existing = await this.listingRepositoryRead.findListingById(listingId);
+    if (!existing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { listingId },
+      } as IThrowedError;
+    }
+
+    const sold = await this.listingRepositoryWrite.markListingSold({
+      listingId,
+      orderId,
+    });
+
+    if (!sold) {
+      throw {
+        status: 409,
+        errorCode: EErrorCode.RESOURCE_CONFLICT,
+        message: 'Listing could not be marked sold',
+        details: { listingId, orderId },
+      } as IThrowedError;
+    }
+
+    return this.publishListingStatusChange(
+      existing,
+      sold,
+      EListingStatus.SOLD,
+      actor.actorId,
+      'Sold via order',
+    );
   }
 }

@@ -1,6 +1,7 @@
 import { VerificationController } from '../../application/controllers/verification.controller';
 import { IController } from '../../domain/server/interfaces/IController';
 import { EvidenceItemServiceFactory } from './evidence-item.service.factory';
+import { ProofCodeAnalysisServiceFactory } from './proof-code-analysis.service.factory';
 import { SealServiceFactory } from './seal.service.factory';
 import { VerificationCaseServiceFactory } from './verification-case.service.factory';
 
@@ -10,6 +11,7 @@ export class VerificationControllerFactory {
       VerificationCaseServiceFactory.create(),
       EvidenceItemServiceFactory.create(),
       SealServiceFactory.create(),
+      ProofCodeAnalysisServiceFactory.create(),
     );
   }
 }

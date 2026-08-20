@@ -107,7 +107,18 @@ describe('when we open a verification case', () => {
     const service = new VerificationCaseService({
       verificationCaseRepositoryRead: new VerificationCaseRepositoryRead(),
       verificationCaseRepositoryWrite: new VerificationCaseRepositoryWrite(),
+      evidenceItemRepositoryRead: {
+        findEvidenceItemById: async () => null,
+        listByCaseId: async () => [],
+      },
       listingRepositoryRead: new ListingRepositoryRead(),
+      userRepositoryRead: {
+        findUserIdsBySearchQuery: async () => [],
+        findUsersByIds: async () => [],
+      } as never,
+      profileRepositoryRead: {
+        findProfilesByUserIds: async () => [],
+      } as never,
       sealService: new SealService({
         sealRepositoryRead: new SealRepositoryRead(),
         sealRepositoryWrite: new SealRepositoryWrite(),
@@ -128,6 +139,12 @@ describe('when we open a verification case', () => {
         eventPublisher: publisher,
       }),
       eventPublisher: publisher,
+      proofCodeIssuer: {
+        issueForCase: (_caseId: string) => ({
+          code: 'ABCD2345',
+          hash: 'a'.repeat(64),
+        }),
+      },
     });
 
     const { listing } = await seedListing();

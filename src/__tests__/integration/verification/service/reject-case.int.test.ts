@@ -10,12 +10,15 @@ import { UserModel } from '../../../../infraestructure/db/mongo/models/user.mode
 import { validCategoryMock } from '../../../__mocks__/category.mock';
 import { validListingMock } from '../../../__mocks__/listing.mock';
 import { validProductMock } from '../../../__mocks__/product.mock';
+import { EvidenceItemServiceFactory } from '../../../../configuration/factory/evidence-item.service.factory';
+import { attachMinProofEvidence } from '../../../helpers/attach-min-proof-evidence';
 import { sellerActor } from '../../../__mocks__/actor.mock';
 import { validUserMock } from '../../../__mocks__/user.mock';
 
 const listingService = ListingServiceFactory.create();
 const productService = ProductServiceFactory.create();
 const verificationCaseService = VerificationCaseServiceFactory.create();
+const evidenceItemService = EvidenceItemServiceFactory.create();
 
 async function seedListing() {
   const user = validUserMock();
@@ -40,11 +43,12 @@ async function seedListing() {
 
 describe('when we reject a case in review with a reason', () => {
   it('should transition to REJECTED', async () => {
-    const { listing } = await seedListing();
+    const { user, listing } = await seedListing();
     const opened = await verificationCaseService.openCase({
       id: new Types.ObjectId().toHexString(),
       listingId: listing.id,
     });
+    await attachMinProofEvidence(evidenceItemService, opened.id, user.id);
     await verificationCaseService.assignReviewer(opened.id, {
       moderatorId: 'mod-1',
     });
@@ -60,11 +64,12 @@ describe('when we reject a case in review with a reason', () => {
 
 describe('when we reject without reason', () => {
   it('should reject with FIELD_INVALID', async () => {
-    const { listing } = await seedListing();
+    const { user, listing } = await seedListing();
     const opened = await verificationCaseService.openCase({
       id: new Types.ObjectId().toHexString(),
       listingId: listing.id,
     });
+    await attachMinProofEvidence(evidenceItemService, opened.id, user.id);
     await verificationCaseService.assignReviewer(opened.id, {
       moderatorId: 'mod-1',
     });

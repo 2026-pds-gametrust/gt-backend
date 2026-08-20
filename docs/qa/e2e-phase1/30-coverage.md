@@ -26,7 +26,7 @@ Executar: `npx ts-node --transpile-only scripts/e2e/coverage.ts`
 | `PUT /services/{id}` | 200 | backoffice |
 | `POST /listings/{id}/publish` | 200 | **rota HTTP direta** — no funil o publish acontece por evento |
 | `POST /verification-cases` | 201 | **sem token** (write publico) |
-| `POST /verification-cases/{caseId}/evidence` | 201 | **sem token**, com asset EVIDENCE READY |
+| `POST /verification-cases/{caseId}/evidence` | 201 | token do vendedor (owner); PHOTO (+ VIDEO se o listing tiver vídeo) |
 | `POST /verification-cases/{id}/reject` | 200 | apos `assign` (nao sai de PENDING) |
 | `POST /seals/{id}/revoke` | 200 | seal concedido pelo `approve` |
 | `POST /auth/refresh` | 200 | rotacao de refresh token |

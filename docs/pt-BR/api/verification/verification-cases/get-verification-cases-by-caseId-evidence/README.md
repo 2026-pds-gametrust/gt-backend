@@ -7,11 +7,11 @@
 | **Método** | `GET` |
 | **Path** | `/verification-cases/{caseId}/evidence` |
 | **Status sucesso** | `200` |
-| **Autorização** | Público — sem Authorization. Discovery e auth register/login/refresh (CEP exige Bearer). |
+| **Autorização** | Bearer obrigatório (`Authorization: Bearer <accessToken>`). Qualquer group válido (`app-user`+). |
 
 ## O que este endpoint faz
 
-Evidências que sustentam o selo — auditabilidade.
+Requires access token; listing owner or BACKOFFICE/ADMIN.
 
 ## Ganho no produto
 

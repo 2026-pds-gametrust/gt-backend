@@ -1,13 +1,16 @@
 import { randomUUID } from 'crypto';
+import { Types } from 'mongoose';
 import { ListingServiceFactory } from '../../../../configuration/factory/listing.service.factory';
 import { MediaAssetServiceFactory } from '../../../../configuration/factory/media-asset.service.factory';
 import { ProductServiceFactory } from '../../../../configuration/factory/product.service.factory';
 import { VerificationCaseServiceFactory } from '../../../../configuration/factory/verification-case.service.factory';
+import { EvidenceItemServiceFactory } from '../../../../configuration/factory/evidence-item.service.factory';
 import { createEventEnvelope } from '../../../../domain/common/messaging/event-envelope';
 import { EErrorCode } from '../../../../domain/common/errors/enums/EErrorCode';
 import { EListingStatus } from '../../../../domain/listings/entity/enums/EListingStatus';
 import { EShippingMode } from '../../../../domain/listings/entity/enums/EShippingMode';
 import { EMediaPurpose } from '../../../../domain/media/entity/enums/EMediaPurpose';
+import { EEvidenceType } from '../../../../domain/verification/entity/enums/EEvidenceType';
 import { ERequiredChangeTarget } from '../../../../domain/verification/entity/enums/ERequiredChangeTarget';
 import { EVerificationCaseStatus } from '../../../../domain/verification/entity/enums/EVerificationCaseStatus';
 import { CategoryModel } from '../../../../infraestructure/db/mongo/models/category.model';
@@ -24,6 +27,7 @@ const listingService = ListingServiceFactory.create();
 const productService = ProductServiceFactory.create();
 const mediaAssetService = MediaAssetServiceFactory.create();
 const verificationCaseService = VerificationCaseServiceFactory.create();
+const evidenceItemService = EvidenceItemServiceFactory.create();
 
 async function putReadyPhoto(ownerId: string) {
   const png = await createTestPng();
@@ -97,9 +101,27 @@ async function seedSubmittedListing() {
   return { user, listing, photoAssetId: photo.id, videoAssetId: video.id };
 }
 
-async function openInReviewCase(listingId: string) {
+async function openInReviewCase(listingId: string, sellerId: string) {
   const pending =
     await verificationCaseService.ensureOpenCaseForListing(listingId);
+  await evidenceItemService.addEvidence(
+    {
+      id: new Types.ObjectId().toHexString(),
+      caseId: pending.id,
+      type: EEvidenceType.PHOTO,
+      storageKey: 'private/evidence/photo.jpg',
+    },
+    sellerActor(sellerId),
+  );
+  await evidenceItemService.addEvidence(
+    {
+      id: new Types.ObjectId().toHexString(),
+      caseId: pending.id,
+      type: EEvidenceType.VIDEO,
+      storageKey: 'private/evidence/video.mp4',
+    },
+    sellerActor(sellerId),
+  );
   return verificationCaseService.assignReviewer(pending.id, {
     moderatorId: 'mod-1',
   });
@@ -129,8 +151,8 @@ function rejectedEnvelope(payload: Record<string, unknown>) {
 
 describe('when moderator requests granular changes', () => {
   it('should store requiredChanges and revision baseline', async () => {
-    const { listing, photoAssetId } = await seedSubmittedListing();
-    const inReview = await openInReviewCase(listing.id);
+    const { user, listing, photoAssetId } = await seedSubmittedListing();
+    const inReview = await openInReviewCase(listing.id, user.id);
 
     const updated = await verificationCaseService.requestChangesCase(
       inReview.id,
@@ -186,7 +208,7 @@ describe('when listing is rejected definitively', () => {
 describe('when seller resubmits without required edits', () => {
   it('should reject submit with FIELD_INVALID', async () => {
     const { user, listing, photoAssetId } = await seedSubmittedListing();
-    const inReview = await openInReviewCase(listing.id);
+    const inReview = await openInReviewCase(listing.id, user.id);
 
     await verificationCaseService.requestChangesCase(inReview.id, {
       summary: 'Fix photo',
@@ -214,7 +236,7 @@ describe('when seller resubmits without required edits', () => {
 describe('when seller applies required edits and resubmits', () => {
   it('should open a new PENDING case linked via previousCaseId', async () => {
     const { user, listing } = await seedSubmittedListing();
-    const inReview = await openInReviewCase(listing.id);
+    const inReview = await openInReviewCase(listing.id, user.id);
 
     const changesRequested = await verificationCaseService.requestChangesCase(
       inReview.id,
@@ -249,8 +271,8 @@ describe('when seller applies required edits and resubmits', () => {
 
 describe('when request-changes references foreign asset', () => {
   it('should reject with FIELD_INVALID', async () => {
-    const { listing } = await seedSubmittedListing();
-    const inReview = await openInReviewCase(listing.id);
+    const { user, listing } = await seedSubmittedListing();
+    const inReview = await openInReviewCase(listing.id, user.id);
 
     await expect(
       verificationCaseService.requestChangesCase(inReview.id, {

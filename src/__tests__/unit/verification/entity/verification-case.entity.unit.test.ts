@@ -41,4 +41,13 @@ describe('when constructing a verification case entity', () => {
         ),
     ).toThrow('status is required');
   });
+
+  it('should reject invalid proofCodeHash', () => {
+    expect(
+      () =>
+        new VerificationCaseServiceEntity(
+          validVerificationCaseMock({ proofCodeHash: 'not-a-sha256' }),
+        ),
+    ).toThrow('proofCodeHash must be a SHA-256 hex digest');
+  });
 });

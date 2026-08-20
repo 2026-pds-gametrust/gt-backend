@@ -47,6 +47,16 @@ export class SearchListingEventHandler implements IEventHandler {
       return;
     }
 
+    if (
+      envelope.eventType === 'listings.listing.sold' ||
+      envelope.eventType === 'listings.listing.reserved'
+    ) {
+      if (envelope.eventType === 'listings.listing.sold') {
+        await this.searchDocumentService.deleteOnUnpublish(listingId);
+      }
+      return;
+    }
+
     if (envelope.eventType === 'listings.listing.status_changed') {
       const toStatus = payload.toStatus;
       if (toStatus === EListingStatus.PUBLISHED) {

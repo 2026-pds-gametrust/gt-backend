@@ -130,7 +130,7 @@ export class ListingAnalysisService implements IListingAnalysisService {
     try {
       const mediaInput = await this.loadListingMediaForAnalysis(listing, scope);
       const checklistDefs = checklistItemsForScope(scope);
-      const providerInput: IParamsListingAnalysisProviderInput = {
+      const baseInput: IParamsListingAnalysisProviderInput = {
         scope,
         title: listing.title,
         description: listing.description,
@@ -140,7 +140,31 @@ export class ListingAnalysisService implements IListingAnalysisService {
         checklistItemIds: checklistDefs.map((item) => item.id),
       };
 
-      const providerResult = await this.analysisProvider.analyze(providerInput);
+      let providerResult;
+      try {
+        providerResult = await this.analysisProvider.analyze(baseInput);
+      } catch (firstError) {
+        // SUBMIT includes inline video; Gemini often rejects/times out on MP4.
+        // Retry photos-only so moderation still gets a score.
+        if (baseInput.video && baseInput.photos.length > 0) {
+          Logger.info('listingAnalysis.retry_without_video', {
+            eventName: 'listing_analysis_retry_without_video',
+            listingId,
+            scope,
+            reason:
+              firstError instanceof Error
+                ? firstError.message.slice(0, 120)
+                : 'provider_error',
+          });
+          providerResult = await this.analysisProvider.analyze({
+            ...baseInput,
+            video: undefined,
+          });
+        } else {
+          throw firstError;
+        }
+      }
+
       const score = computeAnalysisScore(providerResult.items);
       const completed: Partial<IListingAnalysis> = {
         status: EListingAnalysisStatus.COMPLETED,
@@ -165,6 +189,8 @@ export class ListingAnalysisService implements IListingAnalysisService {
         eventName: 'listing_analysis_unavailable',
         listingId,
         scope,
+        reason:
+          error instanceof Error ? error.message.slice(0, 120) : 'provider_error',
       });
       const unavailable = await this.listingAnalysisRepositoryWrite.updateListingAnalysisById(
         created.id,
@@ -174,6 +200,11 @@ export class ListingAnalysisService implements IListingAnalysisService {
           updatedAt: new Date(),
         },
       );
+
+      if (scope === EListingAnalysisScope.SUBMIT) {
+        await this.applyDraftScoreFallbackToVerificationCase(listingId);
+      }
+
       return unavailable;
     }
   }
@@ -285,6 +316,62 @@ export class ListingAnalysisService implements IListingAnalysisService {
     );
   }
 
+  /**
+   * When SUBMIT analysis fails, attach the latest COMPLETED DRAFT score so the
+   * moderation queue is not left without an AI signal.
+   */
+  private async applyDraftScoreFallbackToVerificationCase(
+    listingId: string,
+  ): Promise<void> {
+    const draft =
+      await this.listingAnalysisRepositoryRead.findLatestByListingIdAndScope(
+        listingId,
+        EListingAnalysisScope.DRAFT,
+      );
+    if (!draft || draft.status !== EListingAnalysisStatus.COMPLETED) {
+      return;
+    }
+
+    const verificationCase =
+      await this.verificationCaseRepositoryRead.findOpenCaseByListingId(listingId);
+    if (!verificationCase) {
+      return;
+    }
+
+    const existing = verificationCase.checklist?.aiAnalysis as
+      | { score?: unknown }
+      | undefined;
+    if (existing && typeof existing.score === 'number') {
+      return;
+    }
+
+    const aiAnalysis: IVerificationAiChecklist = {
+      analysisId: draft.id,
+      score: draft.score,
+      items: draft.items,
+      modelId: draft.modelId,
+      promptVersion: draft.promptVersion,
+      analyzedAt: (draft.updatedAt ?? draft.createdAt).toISOString(),
+    };
+
+    await this.verificationCaseRepositoryWrite.updateVerificationCaseById(
+      verificationCase.id,
+      {
+        checklist: {
+          ...(verificationCase.checklist ?? {}),
+          aiAnalysis,
+        },
+      },
+    );
+
+    Logger.info('listingAnalysis.draft_score_fallback', {
+      eventName: 'listing_analysis_draft_score_fallback',
+      listingId,
+      analysisId: draft.id,
+      score: draft.score,
+    });
+  }
+
   private buildIdempotencyKey(
     listing: IListing,
     scope: EListingAnalysisScope,
@@ -345,21 +432,21 @@ export class ListingAnalysisService implements IListingAnalysisService {
       return undefined;
     }
 
-    const data = await this.objectStorage.getObject({
+    const objectBytes = await this.objectStorage.getObject({
       bucketClass: asset.bucketClass,
       key: storageKey,
     });
-    if (!data) {
+    if (!objectBytes) {
       return undefined;
     }
 
-    if (maxBytes !== undefined && data.byteLength > maxBytes) {
+    if (maxBytes !== undefined && objectBytes.byteLength > maxBytes) {
       return undefined;
     }
 
     return {
       mimeType: asset.contentType,
-      data,
+      data: objectBytes,
       label,
     };
   }

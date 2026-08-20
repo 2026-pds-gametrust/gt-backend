@@ -16,6 +16,8 @@ export class VerificationCaseServiceEntity implements IVerificationCase {
   requiredChanges?: IRequiredChange[];
   revisionBaseline?: IRevisionBaseline;
   previousCaseId?: string;
+  proofCodeHash?: string;
+  proofCodeIssuedAt?: Date;
   createdAt: Date;
   updatedAt?: Date;
 
@@ -30,6 +32,8 @@ export class VerificationCaseServiceEntity implements IVerificationCase {
     this.requiredChanges = verificationCase.requiredChanges;
     this.revisionBaseline = verificationCase.revisionBaseline;
     this.previousCaseId = verificationCase.previousCaseId?.trim();
+    this.proofCodeHash = verificationCase.proofCodeHash?.trim();
+    this.proofCodeIssuedAt = verificationCase.proofCodeIssuedAt;
     this.createdAt = verificationCase.createdAt || new Date();
     this.updatedAt = verificationCase.updatedAt;
   }
@@ -39,6 +43,15 @@ export class VerificationCaseServiceEntity implements IVerificationCase {
     requireNonEmptyString(verificationCase.listingId, 'listingId');
     if (!verificationCase.status) {
       throw new Error('status is required');
+    }
+    if (
+      verificationCase.proofCodeHash !== undefined &&
+      verificationCase.proofCodeHash !== null
+    ) {
+      const hash = String(verificationCase.proofCodeHash).trim();
+      if (!/^[a-f0-9]{64}$/i.test(hash)) {
+        throw new Error('proofCodeHash must be a SHA-256 hex digest');
+      }
     }
   }
 }

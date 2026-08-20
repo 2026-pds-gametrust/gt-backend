@@ -43,7 +43,33 @@ export class VerificationCaseRepositoryWrite
       serviceLogErrorHandler(error, {
         eventName:
           'VerificationCaseRepositoryWrite.updateVerificationCaseById',
-        eventData: { id, data },
+        eventData: { id },
+      });
+      throw {
+        status: 500,
+        errorCode: EErrorCode.DATABASE_ERROR,
+      } as IThrowedError;
+    }
+  }
+
+  async setChecklistProofCodeAnalysis(
+    id: string,
+    proofCodeAnalysis: NonNullable<
+      IVerificationCase['checklist']
+    >['proofCodeAnalysis'],
+  ): Promise<IVerificationCase | null> {
+    try {
+      const doc = await VerificationCaseModel.findOneAndUpdate(
+        { id },
+        { $set: { 'checklist.proofCodeAnalysis': proofCodeAnalysis } },
+        { new: true },
+      );
+      return doc ? dbToInternal(doc) : null;
+    } catch (error: any) {
+      serviceLogErrorHandler(error, {
+        eventName:
+          'VerificationCaseRepositoryWrite.setChecklistProofCodeAnalysis',
+        eventData: { id },
       });
       throw {
         status: 500,

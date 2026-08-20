@@ -147,14 +147,25 @@ async function main(): Promise<void> {
   // ---------------------------------------------------- 9. POST /verification-cases/{caseId}/evidence
   const evidenceAssetId = await uploadReadyAsset(seller, 'EVIDENCE', manualCaseId, 'image');
   const evidence = await post(`/verification-cases/${manualCaseId}/evidence`, {
+    token: seller.accessToken,
     body: { id: uniqueId('cov-ev'), type: 'PHOTO', assetId: evidenceAssetId },
   });
-  record('POST /verification-cases/{caseId}/evidence', 201, evidence.status, 'sem token (write publico)');
+  record('POST /verification-cases/{caseId}/evidence', 201, evidence.status, 'token do vendedor (owner)');
 
   // ---------------------------------------------------- 10. POST /verification-cases/{id}/reject
   const listingReject = await createReadyListing(seller, productId, `CovReject${Date.now()}`);
   await post(`/listings/${listingReject}/submit`, { token: seller.accessToken });
   const rejectCaseId = await waitForCase(listingReject, boToken);
+  const rejectPhoto = await uploadReadyAsset(seller, 'EVIDENCE', rejectCaseId, 'image');
+  const rejectVideo = await uploadReadyAsset(seller, 'EVIDENCE', rejectCaseId, 'video');
+  await post(`/verification-cases/${rejectCaseId}/evidence`, {
+    token: seller.accessToken,
+    body: { id: uniqueId('rej-ph'), type: 'PHOTO', assetId: rejectPhoto },
+  });
+  await post(`/verification-cases/${rejectCaseId}/evidence`, {
+    token: seller.accessToken,
+    body: { id: uniqueId('rej-vd'), type: 'VIDEO', assetId: rejectVideo },
+  });
   await post(`/verification-cases/${rejectCaseId}/assign`, {
     token: boToken,
     body: { moderatorId: backoffice.userId },
@@ -169,6 +180,16 @@ async function main(): Promise<void> {
   const listingSeal = await createReadyListing(seller, productId, `CovSeal${Date.now()}`);
   await post(`/listings/${listingSeal}/submit`, { token: seller.accessToken });
   const sealCaseId = await waitForCase(listingSeal, boToken);
+  const sealPhoto = await uploadReadyAsset(seller, 'EVIDENCE', sealCaseId, 'image');
+  const sealVideo = await uploadReadyAsset(seller, 'EVIDENCE', sealCaseId, 'video');
+  await post(`/verification-cases/${sealCaseId}/evidence`, {
+    token: seller.accessToken,
+    body: { id: uniqueId('seal-ph'), type: 'PHOTO', assetId: sealPhoto },
+  });
+  await post(`/verification-cases/${sealCaseId}/evidence`, {
+    token: seller.accessToken,
+    body: { id: uniqueId('seal-vd'), type: 'VIDEO', assetId: sealVideo },
+  });
   await post(`/verification-cases/${sealCaseId}/assign`, {
     token: boToken,
     body: { moderatorId: backoffice.userId },

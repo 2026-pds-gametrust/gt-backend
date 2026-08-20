@@ -78,10 +78,27 @@
 
 ## Erros documentados
 
+- **400** — Invalid fields
 - **401** — Missing, malformed, expired, invalid or logout-revoked Bearer token — AUTH_UNAUTHORIZED
 - **403** — Forbidden
 - **404** — Not found
 - **409** — Invalid transition
+
+### HTTP 400
+
+Invalid fields
+
+**Exemplo:**
+
+```json
+{
+  "error": "string",
+  "code": "RESOURCE_NOT_FOUND",
+  "contextInfo": {}
+}
+```
+
+Validação / `USER_UNDERAGE` / `FIELD_INVALID` (register duplicado também é 400). Destacar campos; **não** tratar 400 de register como “email já existe” na copy.
 
 ### HTTP 401
 

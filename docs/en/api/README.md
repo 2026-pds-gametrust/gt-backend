@@ -6,9 +6,9 @@ Generated from `src/contracts/service.yaml` for API consumers.
 |--|--|
 | **Source** | [`src/contracts/service.yaml`](../../../src/contracts/service.yaml) |
 | **Local base URL** | `http://localhost:3000` |
-| **Documented endpoints** | **72** |
-| **Schemas** | **73** — [_schemas/](./_schemas/) |
-| **Generated on** | 2026-08-19 |
+| **Documented endpoints** | **87** |
+| **Schemas** | **92** — [_schemas/](./_schemas/) |
+| **Generated on** | 2026-08-20 |
 | **Português (Brasil)** | [Português (Brasil)](../../pt-BR/api/) |
 
 ## Start here
@@ -26,11 +26,13 @@ Generated from `src/contracts/service.yaml` for API consumers.
 | **catalog** | 15 | [catalog/](./catalog/) |
 | **favorites** | 3 | [favorites/](./favorites/) |
 | **identity** | 15 | [identity/](./identity/) |
+| **listingchat** | 10 | [listingchat/](./listingchat/) |
 | **listings** | 9 | [listings/](./listings/) |
 | **media** | 4 | [media/](./media/) |
+| **orders** | 3 | [orders/](./orders/) |
 | **search** | 3 | [search/](./search/) |
 | **trust** | 5 | [trust/](./trust/) |
-| **verification** | 12 | [verification/](./verification/) |
+| **verification** | 14 | [verification/](./verification/) |
 
 ## Full endpoint index
 
@@ -75,6 +77,16 @@ Generated from `src/contracts/service.yaml` for API consumers.
 | identity | `PUT` | `/users/{id}` | Update a user | [identity/users/put-users-by-id](./identity/users/put-users-by-id/) |
 | identity | `PUT` | `/users/{id}/groups` | Assign user groups (ADMIN only) | [identity/users/put-users-by-id-groups](./identity/users/put-users-by-id-groups/) |
 | identity | `POST` | `/users/{id}/verify` | Verify a user identity | [identity/users/post-users-by-id-verify](./identity/users/post-users-by-id-verify/) |
+| listingchat | `GET` | `/chat-reports` | List chat reports (backoffice/admin) | [listingchat/chat-reports/get-chat-reports](./listingchat/chat-reports/get-chat-reports/) |
+| listingchat | `GET` | `/conversations` | List conversations for the authenticated actor | [listingchat/conversations/get-conversations](./listingchat/conversations/get-conversations/) |
+| listingchat | `POST` | `/conversations` | Open or resume a conversation for a published listing | [listingchat/conversations/post-conversations](./listingchat/conversations/post-conversations/) |
+| listingchat | `GET` | `/conversations/{conversationId}` | Get conversation detail (participant only) | [listingchat/conversations/get-conversations-by-conversationId](./listingchat/conversations/get-conversations-by-conversationId/) |
+| listingchat | `POST` | `/conversations/{conversationId}/block` | Block the other participant across listing conversations | [listingchat/conversations/post-conversations-by-conversationId-block](./listingchat/conversations/post-conversations-by-conversationId-block/) |
+| listingchat | `GET` | `/conversations/{conversationId}/messages` | Paginated message history (participant only) | [listingchat/conversations/get-conversations-by-conversationId-messages](./listingchat/conversations/get-conversations-by-conversationId-messages/) |
+| listingchat | `POST` | `/conversations/{conversationId}/messages` | Send a text message (participant only) | [listingchat/conversations/post-conversations-by-conversationId-messages](./listingchat/conversations/post-conversations-by-conversationId-messages/) |
+| listingchat | `POST` | `/conversations/{conversationId}/messages/{messageId}/reports` | Report a specific message | [listingchat/conversations/post-conversations-by-conversationId-messages-by-messageId-reports](./listingchat/conversations/post-conversations-by-conversationId-messages-by-messageId-reports/) |
+| listingchat | `POST` | `/conversations/{conversationId}/read` | Mark conversation as read for the actor | [listingchat/conversations/post-conversations-by-conversationId-read](./listingchat/conversations/post-conversations-by-conversationId-read/) |
+| listingchat | `POST` | `/conversations/{conversationId}/reports` | Report a conversation | [listingchat/conversations/post-conversations-by-conversationId-reports](./listingchat/conversations/post-conversations-by-conversationId-reports/) |
 | listings | `GET` | `/listings` | List verified public listings | [listings/listings/get-listings](./listings/listings/get-listings/) |
 | listings | `POST` | `/listings` | Create listing draft | [listings/listings/post-listings](./listings/listings/post-listings/) |
 | listings | `GET` | `/listings/{id}` | Get listing by id | [listings/listings/get-listings-by-id](./listings/listings/get-listings-by-id/) |
@@ -88,6 +100,9 @@ Generated from `src/contracts/service.yaml` for API consumers.
 | media | `GET` | `/media/assets/{id}/content` | Get a short-lived content grant | [media/media/get-media-assets-by-id-content](./media/media/get-media-assets-by-id-content/) |
 | media | `POST` | `/media/uploads` | Create a presigned image or listing video upload grant | [media/media/post-media-uploads](./media/media/post-media-uploads/) |
 | media | `POST` | `/media/uploads/{id}/complete` | Confirm the object arrived and start processing | [media/media/post-media-uploads-by-id-complete](./media/media/post-media-uploads-by-id-complete/) |
+| orders | `GET` | `/orders` | List orders for the authenticated buyer or seller | [orders/orders/get-orders](./orders/orders/get-orders/) |
+| orders | `POST` | `/orders` | Create a buy-now order for a published listing | [orders/orders/post-orders](./orders/orders/post-orders/) |
+| orders | `GET` | `/orders/{id}` | Get order by id (buyer or seller only) | [orders/orders/get-orders-by-id](./orders/orders/get-orders-by-id/) |
 | search | `GET` | `/search` | Lexical search over published listing documents | [search/search/get-search](./search/search/get-search/) |
 | search | `POST` | `/search/reconcile` | Rebuild search_documents for PUBLISHED listings and synonym projections from taxonomy | [search/search/post-search-reconcile](./search/search/post-search-reconcile/) |
 | search | `GET` | `/synonyms` | List synonym projections for expansion | [search/synonyms/get-synonyms](./search/synonyms/get-synonyms/) |
@@ -96,6 +111,7 @@ Generated from `src/contracts/service.yaml` for API consumers.
 | trust | `POST` | `/trust-events` | Append trust event (backoffice) | [trust/trust-events/post-trust-events](./trust/trust-events/post-trust-events/) |
 | trust | `GET` | `/trust-scores/{sellerId}` | Get trust score for seller (default 0) | [trust/trust-scores/get-trust-scores-by-sellerId](./trust/trust-scores/get-trust-scores-by-sellerId/) |
 | trust | `POST` | `/trust-scores/{sellerId}/recompute` | Recompute trust score from ledger | [trust/trust-scores/post-trust-scores-by-sellerId-recompute](./trust/trust-scores/post-trust-scores-by-sellerId-recompute/) |
+| verification | `GET` | `/listings/{listingId}/proof-code` | Ensure open case and retrieve possession proof code for a listing | [verification/listings/get-listings-by-listingId-proof-code](./verification/listings/get-listings-by-listingId-proof-code/) |
 | verification | `GET` | `/seals` | List seals by listingId | [verification/seals/get-seals](./verification/seals/get-seals/) |
 | verification | `GET` | `/seals/{id}` | Get seal by id | [verification/seals/get-seals-by-id](./verification/seals/get-seals-by-id/) |
 | verification | `POST` | `/seals/{id}/revoke` | Revoke an active seal (backoffice) | [verification/seals/post-seals-by-id-revoke](./verification/seals/post-seals-by-id-revoke/) |
@@ -106,6 +122,7 @@ Generated from `src/contracts/service.yaml` for API consumers.
 | verification | `GET` | `/verification-cases/{id}` | Get verification case by id | [verification/verification-cases/get-verification-cases-by-id](./verification/verification-cases/get-verification-cases-by-id/) |
 | verification | `POST` | `/verification-cases/{id}/approve` | Approve case and grant seal (backoffice) | [verification/verification-cases/post-verification-cases-by-id-approve](./verification/verification-cases/post-verification-cases-by-id-approve/) |
 | verification | `POST` | `/verification-cases/{id}/assign` | Assign reviewer (backoffice) | [verification/verification-cases/post-verification-cases-by-id-assign](./verification/verification-cases/post-verification-cases-by-id-assign/) |
+| verification | `GET` | `/verification-cases/{id}/proof-code` | Retrieve possession proof code plaintext for an open case | [verification/verification-cases/get-verification-cases-by-id-proof-code](./verification/verification-cases/get-verification-cases-by-id-proof-code/) |
 | verification | `POST` | `/verification-cases/{id}/reject` | Reject verification case (backoffice) | [verification/verification-cases/post-verification-cases-by-id-reject](./verification/verification-cases/post-verification-cases-by-id-reject/) |
 | verification | `POST` | `/verification-cases/{id}/request-changes` | Request granular listing changes (backoffice) | [verification/verification-cases/post-verification-cases-by-id-request-changes](./verification/verification-cases/post-verification-cases-by-id-request-changes/) |
 

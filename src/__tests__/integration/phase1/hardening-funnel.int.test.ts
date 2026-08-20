@@ -7,6 +7,8 @@ import { ListingServiceFactory } from '../../../configuration/factory/listing.se
 import { ProductServiceFactory } from '../../../configuration/factory/product.service.factory';
 import { SearchDocumentServiceFactory } from '../../../configuration/factory/search-document.service.factory';
 import { VerificationCaseServiceFactory } from '../../../configuration/factory/verification-case.service.factory';
+import { EvidenceItemServiceFactory } from '../../../configuration/factory/evidence-item.service.factory';
+import { attachMinProofEvidence } from '../../helpers/attach-min-proof-evidence';
 import { EListingStatus } from '../../../domain/listings/entity/enums/EListingStatus';
 import { EShippingMode } from '../../../domain/listings/entity/enums/EShippingMode';
 import { EVerificationCaseStatus } from '../../../domain/verification/entity/enums/EVerificationCaseStatus';
@@ -24,6 +26,7 @@ const listingService = ListingServiceFactory.create();
 const productService = ProductServiceFactory.create();
 const verificationCaseService = VerificationCaseServiceFactory.create();
 const searchDocumentService = SearchDocumentServiceFactory.create();
+const evidenceItemService = EvidenceItemServiceFactory.create();
 
 /**
  * Phase 1 hardening funnel (E22–E25):
@@ -66,6 +69,11 @@ describe('when Phase 1 hardening funnel runs end-to-end', () => {
     });
     expect(openCases).toHaveLength(1);
 
+    await attachMinProofEvidence(
+      evidenceItemService,
+      openCases[0].id,
+      seller.id,
+    );
     await verificationCaseService.assignReviewer(openCases[0].id, {
       moderatorId: 'mod-e26',
     });

@@ -168,6 +168,7 @@ describe('when controllers translate service failures', () => {
     const cases = {
       listVerificationCases: jest.fn().mockRejectedValue(boom),
       getVerificationCaseById: jest.fn().mockRejectedValue(boom),
+      getProofCodePlaintext: jest.fn().mockRejectedValue(boom),
       openCase: jest.fn().mockRejectedValue(boom),
       assignReviewer: jest.fn().mockRejectedValue(boom),
       approveCase: jest.fn().mockRejectedValue(boom),
@@ -182,9 +183,15 @@ describe('when controllers translate service failures', () => {
       getSealById: jest.fn().mockRejectedValue(boom),
       revokeSeal: jest.fn().mockRejectedValue(boom),
     };
-    const verification = new VerificationController(cases as any, evidence as any, seals as any);
+    const verification = new VerificationController(
+      cases as any,
+      evidence as any,
+      seals as any,
+      { getAnalysisForCase: async () => ({}), requestAnalysis: async () => null } as any,
+    );
     await verification.listVerificationCases({} as any, mockRes());
     await verification.getVerificationCaseById({ params: { id: '1' } } as any, mockRes());
+    await verification.getProofCode({ params: { id: '1' }, actor: { actorId: 'u' } } as any, mockRes());
     await verification.openVerificationCase({ body: {} } as any, mockRes());
     await verification.assignReviewer({ params: { id: '1' }, body: {} } as any, mockRes());
     await verification.approveCase({ params: { id: '1' } } as any, mockRes());

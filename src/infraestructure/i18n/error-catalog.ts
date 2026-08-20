@@ -7,6 +7,16 @@ export const ErrorCatalog: Catalog<EErrorCode> = {
     en: 'Database error. Please try again.',
     es: 'Error al acceder a la base de datos. Por favor, inténtelo de nuevo.',
   },
+  [EErrorCode.LISTING_ALREADY_RESERVED]: {
+    'pt-BR': 'Este anúncio já está reservado por outro comprador.',
+    en: 'This listing is already reserved by another buyer.',
+    es: 'Este anuncio ya está reservado por otro comprador.',
+  },
+  [EErrorCode.LISTING_NOT_AVAILABLE_FOR_PURCHASE]: {
+    'pt-BR': 'Este anúncio não está disponível para compra imediata.',
+    en: 'This listing is not available for buy now.',
+    es: 'Este anuncio no está disponible para compra inmediata.',
+  },
   [EErrorCode.RESOURCE_CONFLICT]: {
     'pt-BR': 'Conflito: o recurso já existe ou está em uso.',
     en: 'Conflict: the resource already exists or is in use.',
@@ -222,5 +232,22 @@ export const ErrorCatalog: Catalog<EErrorCode> = {
     'pt-BR': 'Falha ao confirmar o usuário. Por favor, tente novamente.',
     en: 'Failed to confirm user. Please try again.',
     es: 'Error al confirmar el usuario. Por favor, inténtelo de nuevo.',
+  },
+  [EErrorCode.CHAT_CONTENT_REJECTED]: {
+    'pt-BR':
+      'Mensagem rejeitada: o conteúdo parece conter apenas contato externo.',
+    en: 'Message rejected: content appears to contain only external contact.',
+    es: 'Mensaje rechazado: el contenido parece contener solo contacto externo.',
+  },
+  [EErrorCode.CHAT_CONVERSATION_BLOCKED]: {
+    'pt-BR': 'Esta conversa está bloqueada e não aceita novas mensagens.',
+    en: 'This conversation is blocked and cannot receive new messages.',
+    es: 'Esta conversación está bloqueada y no acepta nuevos mensajes.',
+  },
+  [EErrorCode.CHAT_NOT_ELIGIBLE]: {
+    'pt-BR':
+      'Não é possível abrir conversa para este anúncio ou perfil de vendedor.',
+    en: 'Cannot open conversation for this listing or seller profile.',
+    es: 'No es posible abrir conversación para este anuncio o perfil de vendedor.',
   },
 };

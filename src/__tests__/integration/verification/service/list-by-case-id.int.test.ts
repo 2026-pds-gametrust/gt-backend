@@ -41,20 +41,26 @@ async function seedOpenCase() {
     id: new Types.ObjectId().toHexString(),
     listingId: listing.id,
   });
-  return { opened };
+  return { user, opened };
 }
 
 describe('when we list evidence by case id', () => {
   it('should return evidence items for the case', async () => {
-    const { opened } = await seedOpenCase();
-    const evidence = await evidenceItemService.addEvidence({
-      id: new Types.ObjectId().toHexString(),
-      caseId: opened.id,
-      type: EEvidenceType.PHOTO,
-      storageKey: 'private/bucket/key.jpg',
-    });
+    const { user, opened } = await seedOpenCase();
+    const evidence = await evidenceItemService.addEvidence(
+      {
+        id: new Types.ObjectId().toHexString(),
+        caseId: opened.id,
+        type: EEvidenceType.PHOTO,
+        storageKey: 'private/bucket/key.jpg',
+      },
+      sellerActor(user.id),
+    );
 
-    const listed = await evidenceItemService.listByCaseId(opened.id);
+    const listed = await evidenceItemService.listByCaseId(
+      opened.id,
+      sellerActor(user.id),
+    );
 
     expect(listed).toHaveLength(1);
     expect(listed[0].id).toBe(evidence.id);
@@ -64,7 +70,7 @@ describe('when we list evidence by case id', () => {
 describe('when case does not exist for listByCaseId', () => {
   it('should reject with RESOURCE_NOT_FOUND', async () => {
     await expect(
-      evidenceItemService.listByCaseId('missing-case'),
+      evidenceItemService.listByCaseId('missing-case', sellerActor('any')),
     ).rejects.toMatchObject({
       status: 404,
       errorCode: EErrorCode.RESOURCE_NOT_FOUND,

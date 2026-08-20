@@ -17,6 +17,8 @@ export const VerificationCaseSchema = new Schema<IMVerificationCase>(
     requiredChanges: { type: Schema.Types.Mixed },
     revisionBaseline: { type: Schema.Types.Mixed },
     previousCaseId: { type: String },
+    proofCodeHash: { type: String },
+    proofCodeIssuedAt: { type: Date },
   },
   { timestamps: true, collection: 'verification_cases' },
 );

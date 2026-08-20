@@ -2,6 +2,8 @@ import { CategoryServiceFactory } from '../../../configuration/factory/category.
 import { ListingServiceFactory } from '../../../configuration/factory/listing.service.factory';
 import { ProductServiceFactory } from '../../../configuration/factory/product.service.factory';
 import { VerificationCaseServiceFactory } from '../../../configuration/factory/verification-case.service.factory';
+import { EvidenceItemServiceFactory } from '../../../configuration/factory/evidence-item.service.factory';
+import { attachMinProofEvidence } from '../../helpers/attach-min-proof-evidence';
 import { EventPublisherFactory } from '../../../configuration/factory/messaging/event-publisher.factory';
 import { EListingStatus } from '../../../domain/listings/entity/enums/EListingStatus';
 import { EShippingMode } from '../../../domain/listings/entity/enums/EShippingMode';
@@ -22,6 +24,10 @@ const listingService = ListingServiceFactory.create();
 const productService = ProductServiceFactory.create();
 const categoryService = CategoryServiceFactory.create();
 const verificationCaseService = VerificationCaseServiceFactory.create();
+
+function evidenceItemService() {
+  return EvidenceItemServiceFactory.create();
+}
 
 async function seedSellerAndProduct() {
   const user = validUserMock();
@@ -137,6 +143,7 @@ describe('when verification case is approved with in-process event dispatch', ()
     });
     expect(openCase).not.toBeNull();
 
+    await attachMinProofEvidence(evidenceItemService(), openCase!.id, user.id);
     await verificationCaseService.assignReviewer(openCase!.id, {
       moderatorId: 'mod-e23',
     });
@@ -161,6 +168,7 @@ describe('when verification case is approved with in-process event dispatch', ()
     const openCase = await VerificationCaseModel.findOne({
       listingId: created.id,
     });
+    await attachMinProofEvidence(evidenceItemService(), openCase!.id, user.id);
     await verificationCaseService.assignReviewer(openCase!.id, {
       moderatorId: 'mod-e23-idem',
     });

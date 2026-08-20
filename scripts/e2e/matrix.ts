@@ -161,8 +161,8 @@ async function main(): Promise<void> {
   const h2Evidence = await post(`/verification-cases/${MISSING}/evidence`, {
     body: { id: uniqueId('ev'), type: 'PHOTO', storageKey: 'k' },
   });
-  check('H2', 'POST .../evidence sem auth nenhuma', 'POST .../{caseId}/evidence', [201, 404], h2Evidence.status,
-    h2Evidence.status !== 401 && h2Evidence.status !== 403 ? 'WRITE PUBLICO CONFIRMADO' : undefined);
+  check('H2', 'POST .../evidence sem auth nenhuma', 'POST .../{caseId}/evidence', 401, h2Evidence.status,
+    h2Evidence.status === 401 ? 'agora exige token (proof-code MVP)' : undefined);
 
   // ---------------------------------------------------------------- H4: 400 antes de 401
   const h4 = await post('/categories', { body: { slug: 123, name: null } });

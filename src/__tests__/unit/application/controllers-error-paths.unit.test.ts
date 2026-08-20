@@ -92,8 +92,20 @@ describe('when controllers translate service failures', () => {
       getProfileByUserId: jest.fn().mockRejectedValue(boom),
       createProfile: jest.fn().mockRejectedValue(boom),
       updateProfileById: jest.fn().mockRejectedValue(boom),
+      findProfilesNear: jest.fn().mockRejectedValue(boom),
     };
-    const controller = new IdentityController(user as any, profile as any);
+    const auth = {
+      assignGroups: jest.fn().mockRejectedValue(boom),
+    };
+    const cep = {
+      lookupByCep: jest.fn().mockRejectedValue(boom),
+    };
+    const controller = new IdentityController(
+      user as any,
+      profile as any,
+      auth as any,
+      cep as any,
+    );
     await controller.getUsers({} as any, mockRes());
     await controller.getUserById({ params: { id: '1' } } as any, mockRes());
     await controller.createUser({ body: {} } as any, mockRes());
@@ -105,6 +117,12 @@ describe('when controllers translate service failures', () => {
     await controller.getProfileByUserId({ params: { userId: '1' } } as any, mockRes());
     await controller.createProfile({ body: {}, actor: { actorId: '1', groups: [] } } as any, mockRes());
     await controller.updateProfile({ params: { id: '1' }, body: {}, actor: { actorId: '1', groups: [] } } as any, mockRes());
+    await controller.findProfilesNear({ query: { lng: 0, lat: 0 } } as any, mockRes());
+    await controller.lookupCep({ params: { cep: '01310100' } } as any, mockRes());
+    await controller.assignUserGroups(
+      { params: { id: '1' }, body: { groups: [] }, actor: { actorId: '1', groups: [] } } as any,
+      mockRes(),
+    );
   });
 
   it('should handle listings trust verification search and favorites errors', async () => {

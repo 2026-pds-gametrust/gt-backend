@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -9,6 +10,14 @@ import { validCategoryMock } from '../../../__mocks__/category.mock';
 import { validListingMock } from '../../../__mocks__/listing.mock';
 import { validProductMock } from '../../../__mocks__/product.mock';
 import { validUserMock } from '../../../__mocks__/user.mock';
+import { assertUnauthorized } from '../../../helpers/auth-assertions';
+import { registerMember } from '../../../helpers/auth-http';
+
+const backofficeBearer = () =>
+  signTestAccessToken({
+    actorId: 'backoffice-actor',
+    groups: [EUserGroup.BACKOFFICE],
+  });
 
 async function seedListing() {
   const user = validUserMock();
@@ -22,8 +31,7 @@ async function seedListing() {
 
   await supertest(app.app)
     .post('/products')
-    .set('x-user-groups', EUserGroup.BACKOFFICE)
-    .set('x-user-id', 'backoffice-actor')
+    .set('Authorization', `Bearer ${backofficeBearer()}`)
     .send({
       id: product.id,
       categoryId: product.categoryId,
@@ -39,7 +47,10 @@ async function seedListing() {
   });
   const createdListing = await supertest(app.app)
     .post('/listings')
-    .set('x-user-id', user.id)
+    .set(
+      'Authorization',
+      `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`,
+    )
     .send({
       id: listing.id,
       sellerId: listing.sellerId,
@@ -67,19 +78,23 @@ describe('when verification HTTP list get reject and evidence routes are called'
     });
     expect(opened.statusCode).toBe(201);
 
-    const listed = await supertest(app.app).get('/verification-cases');
+    const listed = await supertest(app.app)
+      .get('/verification-cases')
+      .set('Authorization', `Bearer ${backofficeBearer()}`);
     expect(listed.statusCode).toBe(200);
-    expect(listed.body.some((item: { id: string }) => item.id === caseId)).toBe(
+    expect(listed.body.items.some((item: { id: string }) => item.id === caseId)).toBe(
       true,
     );
 
-    const got = await supertest(app.app).get(`/verification-cases/${caseId}`);
+    const got = await supertest(app.app)
+      .get(`/verification-cases/${caseId}`)
+      .set('Authorization', `Bearer ${backofficeBearer()}`);
     expect(got.statusCode).toBe(200);
     expect(got.body.id).toBe(caseId);
 
     await supertest(app.app)
       .post(`/verification-cases/${caseId}/assign`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
       .send({ moderatorId: 'mod-cov' });
 
     const evidenceId = new Types.ObjectId().toHexString();
@@ -101,10 +116,39 @@ describe('when verification HTTP list get reject and evidence routes are called'
 
     const rejected = await supertest(app.app)
       .post(`/verification-cases/${caseId}/reject`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
       .send({ reason: 'Incomplete evidence' });
     expect(rejected.statusCode).toBe(200);
     expect(rejected.body.status).toBe('REJECTED');
+  });
+});
+
+describe('when an app-user lists verification cases', () => {
+  it('should return 403 for list and get by id', async () => {
+    const { listing } = await seedListing();
+    const caseId = new Types.ObjectId().toHexString();
+    await supertest(app.app).post('/verification-cases').send({
+      id: caseId,
+      listingId: listing.id,
+    });
+
+    const carlos = await registerMember();
+    const listed = await supertest(app.app)
+      .get('/verification-cases')
+      .set('Authorization', `Bearer ${carlos.body.accessToken}`);
+    expect(listed.statusCode).toBe(403);
+    expect(listed.body).toMatchObject({ error: 'Access denied' });
+
+    const got = await supertest(app.app)
+      .get(`/verification-cases/${caseId}`)
+      .set('Authorization', `Bearer ${carlos.body.accessToken}`);
+    expect(got.statusCode).toBe(403);
+    expect(got.body).toMatchObject({ error: 'Access denied' });
+  });
+
+  it('should return 401 when listing without a token', async () => {
+    const response = await supertest(app.app).get('/verification-cases');
+    assertUnauthorized(response);
   });
 });
 
@@ -120,7 +164,7 @@ describe('when verification HTTP seal get and revoke routes are called', () => {
 
     await supertest(app.app)
       .post(`/verification-cases/${caseId}/assign`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
       .send({ moderatorId: 'mod-seal' });
 
     await supertest(app.app)
@@ -133,7 +177,7 @@ describe('when verification HTTP seal get and revoke routes are called', () => {
 
     const approved = await supertest(app.app)
       .post(`/verification-cases/${caseId}/approve`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
       .send({});
     expect(approved.statusCode).toBe(200);
 
@@ -150,7 +194,7 @@ describe('when verification HTTP seal get and revoke routes are called', () => {
 
     const revoked = await supertest(app.app)
       .post(`/seals/${sealId}/revoke`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
       .send({ sellerId: user.id });
     expect(revoked.statusCode).toBe(200);
     expect(revoked.body.status).toBe('REVOKED');

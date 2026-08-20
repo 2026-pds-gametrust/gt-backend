@@ -1,4 +1,5 @@
 import { normalizeSynonym } from '../../common/types/normalize-synonym';
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { ECategoryStatus } from './enums/ECategoryStatus';
 import { ICategory } from './interfaces/category.interface';
 
@@ -25,11 +26,7 @@ export class CategoryServiceEntity implements ICategory {
   }
 
   private validate(category: ICategory): void {
-    if (!category.slug?.trim()) {
-      throw new Error('Slug is required');
-    }
-    if (!category.name?.trim()) {
-      throw new Error('Name is required');
-    }
+    requireNonEmptyString(category.slug, 'Slug');
+    requireNonEmptyString(category.name, 'Name');
   }
 }

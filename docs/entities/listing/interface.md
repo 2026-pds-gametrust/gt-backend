@@ -36,9 +36,11 @@ One **physical used unit** offered by a seller (Mercado Livre `item` inspiration
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| photoUrls | string[] | yes | Min 1 when submitting; public-safe |
-| videoUrl | string | no | |
+| photoUrls | string[] | yes | Min 1 when creating/submitting; public-safe |
+| videoUrl | string | no on type; required resolved on create/submit | Public listing video |
 | coverPhotoUrl | string | no | Defaults to first photo |
+| assetIds | string[] | no | LISTING image READY asset ids |
+| videoAssetId | string | no | One LISTING video READY asset id |
 
 ### Nested `IListingShipping`
 
@@ -68,7 +70,7 @@ One **physical used unit** offered by a seller (Mercado Livre `item` inspiration
 
 ## Enums
 
-- `EListingStatus: DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD`
+- `EListingStatus: DRAFT, SUBMITTED, PUBLISHED, PAUSED, EXPIRED, RESERVED, SOLD, REJECTED`
 - `EListingCondition: NEW, LIKE_NEW, GOOD, FAIR, POOR`
 - `EShippingMode: PICKUP, SHIPPING`
 - `EWarrantyType: NONE, SELLER, MANUFACTURER_REMAINING`

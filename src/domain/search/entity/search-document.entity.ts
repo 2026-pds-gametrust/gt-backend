@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import {
   ISearchDocument,
   TSearchFacetValue,
@@ -60,19 +61,19 @@ export class SearchDocumentServiceEntity implements ISearchDocument {
   }
 
   private validate(doc: ISearchDocument): void {
-    if (!doc.id?.trim()) throw new Error('id is required');
-    if (!doc.listingId?.trim()) throw new Error('listingId is required');
-    if (!doc.productId?.trim()) throw new Error('productId is required');
-    if (!doc.categoryId?.trim()) throw new Error('categoryId is required');
-    if (!doc.sellerId?.trim()) throw new Error('sellerId is required');
-    if (!doc.title?.trim()) throw new Error('title is required');
-    if (!doc.condition?.trim()) throw new Error('condition is required');
-    if (!doc.status?.trim()) throw new Error('status is required');
+    requireNonEmptyString(doc.id, 'id');
+    requireNonEmptyString(doc.listingId, 'listingId');
+    requireNonEmptyString(doc.productId, 'productId');
+    requireNonEmptyString(doc.categoryId, 'categoryId');
+    requireNonEmptyString(doc.sellerId, 'sellerId');
+    requireNonEmptyString(doc.title, 'title');
+    requireNonEmptyString(doc.condition, 'condition');
+    requireNonEmptyString(doc.status, 'status');
     if (doc.priceCents == null || doc.priceCents < 0) {
       throw new Error('priceCents must be >= 0');
     }
-    if (!doc.currency?.trim()) throw new Error('currency is required');
-    if (!doc.searchText?.trim()) throw new Error('searchText is required');
+    requireNonEmptyString(doc.currency, 'currency');
+    requireNonEmptyString(doc.searchText, 'searchText');
     if (!doc.sourceOccurredAt) throw new Error('sourceOccurredAt is required');
   }
 }

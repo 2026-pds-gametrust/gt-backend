@@ -3,8 +3,12 @@ import { Server } from '../src/domain/server/server';
 import { CategoryAttributeSchemaModel } from '../src/infraestructure/db/mongo/models/category-attribute-schema.model';
 import { CategoryModel } from '../src/infraestructure/db/mongo/models/category.model';
 import { FavoriteModel } from '../src/infraestructure/db/mongo/models/favorite.model';
+import { AuthRateLimitModel } from '../src/infraestructure/db/mongo/models/auth-rate-limit.model';
+import { CredentialModel } from '../src/infraestructure/db/mongo/models/credential.model';
+import { RefreshSessionModel } from '../src/infraestructure/db/mongo/models/refresh-session.model';
 import { ListingEventModel } from '../src/infraestructure/db/mongo/models/listing-event.model';
 import { ListingModel } from '../src/infraestructure/db/mongo/models/listing.model';
+import { MediaAssetModel } from '../src/infraestructure/db/mongo/models/media-asset.model';
 import { PriceHistoryModel } from '../src/infraestructure/db/mongo/models/price-history.model';
 import { ProductModel } from '../src/infraestructure/db/mongo/models/product.model';
 import { ProfileModel } from '../src/infraestructure/db/mongo/models/profile.model';
@@ -22,6 +26,7 @@ beforeAll(async () => {
   const bootstrap = await bootstrapTest();
   dbInstance = bootstrap.dbInstance;
   app = bootstrap.app;
+  await AuthRateLimitModel.deleteMany({});
 });
 
 afterAll(async () => {
@@ -38,5 +43,9 @@ afterAll(async () => {
   await SynonymModel.deleteMany({});
   await QueryLogModel.deleteMany({});
   await FavoriteModel.deleteMany({});
+  await CredentialModel.deleteMany({});
+  await RefreshSessionModel.deleteMany({});
+  await AuthRateLimitModel.deleteMany({});
+  await MediaAssetModel.deleteMany({});
   await dbInstance?.close();
 });

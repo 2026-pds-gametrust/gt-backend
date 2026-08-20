@@ -27,7 +27,8 @@ updating the kit.
 | `architecture_discovery` | As-is profiling, pattern mining, and gated stewardship |
 | `implementer` | Layered backend implementation |
 | `test_engineer` | Jest authoring, execution, and stabilization |
-| `reviewer` | Spec, architecture, naming, REST, and security review |
+| `reviewer` | Spec, architecture, naming, and REST review |
+| `security_reviewer` | Adversarial security review — authorization, injection, secrets, exposure |
 | `qa` | Test planning, verification, and delivery evidence |
 | `github_operator` | Explicitly requested commits, pushes, and pull requests |
 | `jira_operator` | Explicitly requested Jira reads and writes |
@@ -40,8 +41,33 @@ enforces explicit gates, and delegates only specialist work.
 
 ```text
 product_owner -> APPROVED -> architect -> qa PLAN -> implementer
-              -> test_engineer -> reviewer -> qa VERIFY
+              -> test_engineer -> reviewer + security_reviewer -> qa VERIFY
 ```
+
+`reviewer` and `security_reviewer` read the same diff and run together. A blocking
+security finding returns to `implementer` like any other blocking finding.
 
 Small, clear changes should use only the necessary specialists. GitHub and
 Jira operations always require an explicit user request.
+
+## Architecture discovery (Path D)
+
+Use when the repo **diverges** from kit layered / `examples/canonical-user/`, or
+when the user **explicitly overrides**. Aligned kit-layered services skip
+discovery — prefer `architect` / `reviewer` and existing kit docs.
+
+| Surface | Invoke |
+|---------|--------|
+| Codex agent | `architecture_discovery` |
+| Repository skill | [`$architecture-discovery`](../.agents/skills/ai-backend-kit-architecture-discovery/SKILL.md) |
+
+**Copy-paste prompts:**
+
+```text
+Map this repository architecture as-is (Path D). Profile boundaries and mine recurring patterns.
+
+Run architecture discovery anyway (explicit override), even if the repo looks kit-layered.
+```
+
+Pipeline: profile → patterns → gated stewardship. Detail:
+[README — Architecture discovery workflow](../README.md#architecture-discovery-workflow).

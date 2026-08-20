@@ -9,6 +9,8 @@ export interface IListingMedia {
   photoUrls: string[];
   videoUrl?: string;
   coverPhotoUrl?: string;
+  assetIds?: string[];
+  videoAssetId?: string;
 }
 
 export interface IListingShipping {

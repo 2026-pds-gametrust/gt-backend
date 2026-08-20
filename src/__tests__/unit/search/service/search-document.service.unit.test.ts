@@ -45,6 +45,7 @@ function buildService(overrides: Record<string, unknown> = {}) {
       findSealById: async () => null,
       findActiveSealByListingId: async () => null,
       listSealsByListingId: async () => [],
+      listActiveSealsByListingIds: async () => [],
     },
     searchEngine: {
       search: jest.fn().mockResolvedValue([]),
@@ -140,6 +141,51 @@ describe('when reindexing a listing', () => {
     await expect(service.reindexListing(listingId)).resolves.toBeNull();
   });
 
+  it('should not upsert a published listing without an active seal', async () => {
+    const listingId = new Types.ObjectId().toHexString();
+    const deleteSpy = jest.fn().mockResolvedValue(true);
+    const { service } = buildService({
+      searchDocumentRepositoryWrite: {
+        upsertSearchDocument: async (doc: any) => doc,
+        deleteByListingId: deleteSpy,
+      },
+      listingRepositoryRead: {
+        findListingById: async () => ({
+          id: listingId,
+          status: EListingStatus.PUBLISHED,
+          productId: 'p1',
+          sellerId: 's1',
+          title: 'GPU',
+          condition: EListingCondition.GOOD,
+          priceCents: 10,
+          currency: 'BRL',
+          createdAt: new Date(),
+        }),
+        listListings: async () => [],
+      },
+      productRepositoryRead: {
+        findProductById: async () => ({
+          id: 'p1',
+          categoryId: 'c1',
+          brand: 'NVIDIA',
+          model: '4090',
+        }),
+        findProductBySlug: async () => null,
+        findProductBySku: async () => null,
+        listProducts: async () => [],
+      },
+      sealRepositoryRead: {
+        findSealById: async () => null,
+        findActiveSealByListingId: async () => null,
+        listSealsByListingId: async () => [],
+        listActiveSealsByListingIds: async () => [],
+      },
+    });
+
+    await expect(service.reindexListing(listingId)).resolves.toBeNull();
+    expect(deleteSpy).toHaveBeenCalledWith(listingId);
+  });
+
   it('should upsert a published listing with trust seals and media fallback', async () => {
     const listingId = new Types.ObjectId().toHexString();
     const { service } = buildService({
@@ -191,6 +237,7 @@ describe('when reindexing a listing', () => {
           { status: ESealStatus.GRANTED, type: 'AUTHENTICITY' },
           { status: ESealStatus.REVOKED, type: 'OLD' },
         ],
+        listActiveSealsByListingIds: async () => [],
       },
     });
 
@@ -419,6 +466,14 @@ describe('when reindexing without brand series shipping or cover photo', () => {
         findProductBySku: async () => null,
         listProducts: async () => [],
       },
+      sealRepositoryRead: {
+        findSealById: async () => null,
+        findActiveSealByListingId: async () => null,
+        listSealsByListingId: async () => [
+          { status: ESealStatus.GRANTED, type: 'AUTHENTICITY' },
+        ],
+        listActiveSealsByListingIds: async () => [],
+      },
     });
 
     const doc = await service.reindexListing(listingId);
@@ -457,6 +512,14 @@ describe('when reindexing without brand series shipping or cover photo', () => {
         findProductBySlug: async () => null,
         findProductBySku: async () => null,
         listProducts: async () => [],
+      },
+      sealRepositoryRead: {
+        findSealById: async () => null,
+        findActiveSealByListingId: async () => null,
+        listSealsByListingId: async () => [
+          { status: ESealStatus.GRANTED, type: 'AUTHENTICITY' },
+        ],
+        listActiveSealsByListingIds: async () => [],
       },
     });
 

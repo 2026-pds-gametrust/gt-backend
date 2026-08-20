@@ -9,6 +9,9 @@ export function dbToInternal(doc: IMVerificationCase): IVerificationCase {
     checklist: doc.checklist,
     decisionReason: doc.decisionReason,
     moderatorId: doc.moderatorId,
+    requiredChanges: doc.requiredChanges,
+    revisionBaseline: doc.revisionBaseline,
+    previousCaseId: doc.previousCaseId,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -24,5 +27,8 @@ export function internalToDb(
     checklist: verificationCase.checklist,
     decisionReason: verificationCase.decisionReason,
     moderatorId: verificationCase.moderatorId,
+    requiredChanges: verificationCase.requiredChanges,
+    revisionBaseline: verificationCase.revisionBaseline,
+    previousCaseId: verificationCase.previousCaseId,
   };
 }

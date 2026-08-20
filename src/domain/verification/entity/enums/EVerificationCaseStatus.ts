@@ -2,5 +2,6 @@ export enum EVerificationCaseStatus {
   PENDING = 'PENDING',
   IN_REVIEW = 'IN_REVIEW',
   APPROVED = 'APPROVED',
+  CHANGES_REQUESTED = 'CHANGES_REQUESTED',
   REJECTED = 'REJECTED',
 }

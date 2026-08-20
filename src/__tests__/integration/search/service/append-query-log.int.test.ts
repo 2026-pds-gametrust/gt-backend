@@ -25,4 +25,19 @@ describe('when we append a query log', () => {
     expect(persisted).not.toBeNull();
     expect(persisted?.query).toBe(query);
   });
+
+  it('should persist a query log with an empty query string', async () => {
+    const created = await queryLogService.appendQueryLog({
+      query: '',
+      filters: {},
+      resultCount: 0,
+    });
+
+    expect(created.query).toBe('');
+    expect(created.resultCount).toBe(0);
+
+    const persisted = await QueryLogModel.findOne({ id: created.id });
+    expect(persisted).not.toBeNull();
+    expect(persisted?.query).toBe('');
+  });
 });

@@ -10,6 +10,7 @@ import { IActorContext } from '../../common/types/actor-context';
 import { EFavoriteTargetType } from '../entity/enums/EFavoriteTargetType';
 import { FavoriteServiceEntity } from '../entity/favorite.entity';
 import { IFavorite } from '../entity/interfaces/favorite.interface';
+import { EListingStatus } from '../../listings/entity/enums/EListingStatus';
 import {
   IFavoriteService,
   IParamsCreateFavorite,
@@ -22,6 +23,7 @@ export class FavoriteService implements IFavoriteService {
   private readonly userRepositoryRead: IParamsFavoriteService['userRepositoryRead'];
   private readonly productRepositoryRead: IParamsFavoriteService['productRepositoryRead'];
   private readonly listingRepositoryRead: IParamsFavoriteService['listingRepositoryRead'];
+  private readonly sealRepositoryRead: IParamsFavoriteService['sealRepositoryRead'];
   private readonly eventPublisher: IParamsFavoriteService['eventPublisher'];
 
   constructor(params: IParamsFavoriteService) {
@@ -30,6 +32,7 @@ export class FavoriteService implements IFavoriteService {
     this.userRepositoryRead = params.userRepositoryRead;
     this.productRepositoryRead = params.productRepositoryRead;
     this.listingRepositoryRead = params.listingRepositoryRead;
+    this.sealRepositoryRead = params.sealRepositoryRead;
     this.eventPublisher = params.eventPublisher;
   }
 
@@ -139,6 +142,26 @@ export class FavoriteService implements IFavoriteService {
     const listing =
       await this.listingRepositoryRead.findListingById(targetId);
     if (!listing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { targetId },
+      } as IThrowedError;
+    }
+
+    if (listing.status !== EListingStatus.PUBLISHED) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { targetId },
+      } as IThrowedError;
+    }
+
+    const activeSeal =
+      await this.sealRepositoryRead.findActiveSealByListingId(targetId);
+    if (!activeSeal) {
       throw {
         status: 404,
         errorCode: EErrorCode.RESOURCE_NOT_FOUND,

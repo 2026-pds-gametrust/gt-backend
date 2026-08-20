@@ -1,4 +1,5 @@
 import { isValidCpf } from '../../common/types/cpf';
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { EUserStatus } from './enums/EUserStatus';
 import { IUser } from './interfaces/user.interface';
 
@@ -15,6 +16,7 @@ export class UserServiceEntity implements IUser {
   verified: boolean;
   phoneVerified: boolean;
   status: EUserStatus;
+  groups?: string[];
   createdAt: Date;
   updatedAt?: Date;
 
@@ -29,6 +31,7 @@ export class UserServiceEntity implements IUser {
     this.verified = user.verified ?? false;
     this.phoneVerified = user.phoneVerified ?? false;
     this.status = user.status ?? EUserStatus.PENDING_VERIFICATION;
+    this.groups = user.groups ?? [];
     this.createdAt = user.createdAt || new Date();
     this.updatedAt = user.updatedAt;
   }
@@ -40,9 +43,7 @@ export class UserServiceEntity implements IUser {
     if (!user.email?.trim() || !EMAIL_REGEX.test(user.email.trim())) {
       throw new Error('Please provide a valid email address');
     }
-    if (!user.phone?.trim()) {
-      throw new Error('phone is required');
-    }
+    requireNonEmptyString(user.phone, 'phone');
     const digits = user.cpf?.replace(/\D/g, '') ?? '';
     if (!isValidCpf(digits)) {
       throw new Error('Please provide a valid CPF');

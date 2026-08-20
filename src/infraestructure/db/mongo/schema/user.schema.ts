@@ -27,6 +27,11 @@ export const UserSchema = new Schema<IMUser>(
       required: true,
       default: EUserStatus.PENDING_VERIFICATION,
     },
+    groups: {
+      type: [String],
+      required: false,
+      default: [],
+    },
   },
   { timestamps: true, collection: 'users' },
 );

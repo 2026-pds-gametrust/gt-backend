@@ -5,8 +5,10 @@ import {
 } from '@sauvvitech/st-packages';
 import { Request, Response, Router } from 'express';
 import { ListingService } from '../../domain/listings/service/listing.service';
+import { EListingStatus } from '../../domain/listings/entity/enums/EListingStatus';
 import { IController } from '../../domain/server/interfaces/IController';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
+import { requireAccessToken } from '../middleware/require-access-token';
 
 export class ListingsController implements IController {
   router: Router;
@@ -19,24 +21,73 @@ export class ListingsController implements IController {
   }
 
   initRoutes() {
+    this.router.get('/listings/mine', requireAccessToken, this.listMyListings);
     this.router.get('/listings', this.listListings);
     this.router.get('/listings/:id/events', this.listListingEvents);
     this.router.get('/listings/:id', this.getListingById);
-    this.router.post('/listings', this.createListing);
-    this.router.put('/listings/:id', this.updateListing);
-    this.router.post('/listings/:id/submit', this.submitListing);
+    this.router.post('/listings', requireAccessToken, this.createListing);
+    this.router.put('/listings/:id', requireAccessToken, this.updateListing);
+    this.router.post(
+      '/listings/:id/submit',
+      requireAccessToken,
+      this.submitListing,
+    );
     this.router.post(
       '/listings/:id/publish',
+      requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.publishListing,
     );
-    this.router.post('/listings/:id/pause', this.pauseListing);
+    this.router.post(
+      '/listings/:id/pause',
+      requireAccessToken,
+      this.pauseListing,
+    );
   }
 
-  listListings = async (_req: Request, res: Response): Promise<void> => {
+  listListings = async (req: Request, res: Response): Promise<void> => {
     try {
-      const listings = await this.listingService.listListings();
-      res.status(200).json(listings);
+      const sellerId =
+        typeof req.query.sellerId === 'string'
+          ? req.query.sellerId.trim()
+          : undefined;
+
+      if (sellerId) {
+        const listings = await this.listingService.listListingsForViewer(
+          req.actor,
+          { sellerId },
+        );
+        res.status(200).json(listings);
+        return;
+      }
+
+      const page = await this.listingService.listPublicListings({
+        limit:
+          req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+        offset:
+          req.query.offset !== undefined ? Number(req.query.offset) : undefined,
+      });
+      res.status(200).json(page);
+    } catch (error) {
+      handleTranslatedError(error, ErrorCatalog, res);
+    }
+  };
+
+  listMyListings = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const statusRaw =
+        typeof req.query.status === 'string' ? req.query.status : undefined;
+      const status = statusRaw
+        ? (statusRaw.toUpperCase() as EListingStatus)
+        : undefined;
+      const page = await this.listingService.listMyListings(req.actor, {
+        status,
+        limit:
+          req.query.limit !== undefined ? Number(req.query.limit) : undefined,
+        offset:
+          req.query.offset !== undefined ? Number(req.query.offset) : undefined,
+      });
+      res.status(200).json(page);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);
     }
@@ -47,7 +98,10 @@ export class ListingsController implements IController {
     res: Response,
   ): Promise<void> => {
     try {
-      const listing = await this.listingService.getListingById(req.params.id);
+      const listing = await this.listingService.getListingById(
+        req.params.id,
+        req.actor,
+      );
       res.status(200).json(listing);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);
@@ -150,7 +204,10 @@ export class ListingsController implements IController {
     res: Response,
   ): Promise<void> => {
     try {
-      const events = await this.listingService.listEvents(req.params.id);
+      const events = await this.listingService.listEvents(
+        req.params.id,
+        req.actor,
+      );
       res.status(200).json(events);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);

@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { EListingStatus } from './enums/EListingStatus';
 import { IListingEvent } from './interfaces/listing-event.interface';
 
@@ -22,12 +23,8 @@ export class ListingEventServiceEntity implements IListingEvent {
   }
 
   private validate(event: IListingEvent): void {
-    if (!event.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!event.listingId?.trim()) {
-      throw new Error('listingId is required');
-    }
+    requireNonEmptyString(event.id, 'id');
+    requireNonEmptyString(event.listingId, 'listingId');
     if (!event.toStatus) {
       throw new Error('toStatus is required');
     }

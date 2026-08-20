@@ -15,6 +15,7 @@ export const ProductSchema = new Schema<IMProduct>(
     sku: { type: String, sparse: true, unique: true },
     specs: { type: Schema.Types.Mixed },
     imageUrls: { type: [String], default: undefined },
+    imageAssetIds: { type: [String], default: undefined },
     referencePriceCents: { type: Number },
     currency: { type: String },
     status: {

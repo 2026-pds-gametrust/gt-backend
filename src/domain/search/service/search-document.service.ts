@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { createEventEnvelope } from '../../common/messaging/event-envelope';
+import { isBlank } from '../../common/types/required-string';
 import { EListingStatus } from '../../listings/entity/enums/EListingStatus';
 import { ESealStatus } from '../../verification/entity/enums/ESealStatus';
 import { SearchDocumentServiceEntity } from '../entity/search-document.entity';
@@ -120,6 +121,11 @@ export class SearchDocumentService implements ISearchDocumentService {
       .filter((seal) => seal.status === ESealStatus.GRANTED)
       .map((seal) => seal.type);
 
+    if (sealTypes.length === 0) {
+      await this.deleteOnUnpublish(listingId);
+      return null;
+    }
+
     const facets: IListingSearchSnapshot['facets'] = {
       ...(product.specs ?? {}),
       ...(listing.attributes ?? {}),
@@ -209,7 +215,7 @@ export class SearchDocumentService implements ISearchDocumentService {
   private async expandQueryWithSynonyms(
     q?: string,
   ): Promise<string | undefined> {
-    if (!q?.trim()) {
+    if (isBlank(q)) {
       return q;
     }
 
@@ -221,10 +227,10 @@ export class SearchDocumentService implements ISearchDocumentService {
 
     const extras = new Set<string>();
     for (const synonym of synonyms) {
-      if (synonym.canonicalName?.trim()) {
+      if (!isBlank(synonym.canonicalName)) {
         extras.add(synonym.canonicalName.trim());
       }
-      if (synonym.normalizedTerm?.trim()) {
+      if (!isBlank(synonym.normalizedTerm)) {
         extras.add(synonym.normalizedTerm.trim());
       }
     }

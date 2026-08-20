@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { ESealStatus } from './enums/ESealStatus';
 import { ESealType } from './enums/ESealType';
 import { ISeal } from './interfaces/seal.interface';
@@ -27,15 +28,9 @@ export class SealServiceEntity implements ISeal {
   }
 
   private validate(seal: ISeal): void {
-    if (!seal.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!seal.listingId?.trim()) {
-      throw new Error('listingId is required');
-    }
-    if (!seal.caseId?.trim()) {
-      throw new Error('caseId is required');
-    }
+    requireNonEmptyString(seal.id, 'id');
+    requireNonEmptyString(seal.listingId, 'listingId');
+    requireNonEmptyString(seal.caseId, 'caseId');
     if (!seal.type) {
       throw new Error('type is required');
     }

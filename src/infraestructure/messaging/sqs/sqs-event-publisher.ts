@@ -12,7 +12,8 @@ import { IEventPublisher } from '../../../domain/common/messaging/event-publishe
 /**
  * SNS/SQS publisher (DEC-050 / DEC-052).
  * Env: AWS_REGION, SNS_TOPIC_ARN (preferred) or SQS_QUEUE_URL.
- * When MESSAGING_DISABLED=true or NODE_ENV=test, publish is a no-op.
+ * No-op when MESSAGING_DISABLED=true, NODE_ENV=test, or no destination is set
+ * (local yarn dev without broker). Explicit disabled:false still requires a destination.
  */
 export class SqsEventPublisher implements IEventPublisher {
   private readonly sns: SNSClient;
@@ -37,7 +38,9 @@ export class SqsEventPublisher implements IEventPublisher {
     this.queueUrl = options?.queueUrl ?? process.env.SQS_QUEUE_URL;
     this.disabled =
       options?.disabled ??
-      (process.env.MESSAGING_DISABLED === 'true' || process.env.NODE_ENV === 'test');
+      (process.env.MESSAGING_DISABLED === 'true' ||
+        process.env.NODE_ENV === 'test' ||
+        (!this.topicArn && !this.queueUrl));
   }
 
   async publish(envelope: IEventEnvelope): Promise<void> {

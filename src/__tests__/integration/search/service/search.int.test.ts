@@ -36,4 +36,13 @@ describe('when we search documents', () => {
     expect(logs).toHaveLength(1);
     expect(logs[0].resultCount).toBe(0);
   });
+
+  it('should append a query log with empty query when q is omitted', async () => {
+    const results = await searchDocumentService.search({});
+
+    expect(Array.isArray(results)).toBe(true);
+    const logs = await QueryLogModel.find({ query: '' });
+    expect(logs.length).toBeGreaterThanOrEqual(1);
+    expect(logs[0].query).toBe('');
+  });
 });

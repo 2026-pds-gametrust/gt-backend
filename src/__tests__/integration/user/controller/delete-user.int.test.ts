@@ -1,3 +1,5 @@
+import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { EErrorCode } from '../../../../domain/common/errors/enums/EErrorCode';
@@ -10,9 +12,12 @@ describe('when we delete a user via HTTP', () => {
     const userData = validUserMock();
     await UserModel.create(userData);
 
-    const { body, statusCode } = await supertest(app.app).delete(
-      `/users/${userData.id}`,
-    );
+    const { body, statusCode } = await supertest(app.app)
+      .delete(`/users/${userData.id}`)
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: userData.id, groups: [EUserGroup.APP_USER] })}`,
+      );
 
     expect(statusCode).toBe(200);
     expect(body).toMatchObject({ message: 'User deleted successfully' });
@@ -22,9 +27,12 @@ describe('when we delete a user via HTTP', () => {
   });
 
   it('should return 404 when the user does not exist', async () => {
-    const { body, statusCode } = await supertest(app.app).delete(
-      '/users/nonexistent-id',
-    );
+    const { body, statusCode } = await supertest(app.app)
+      .delete('/users/nonexistent-id')
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: 'admin-actor', groups: [EUserGroup.ADMIN] })}`,
+      );
 
     expect(statusCode).toBe(404);
     expect(body).toMatchObject({

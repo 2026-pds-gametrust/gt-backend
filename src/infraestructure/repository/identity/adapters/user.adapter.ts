@@ -12,6 +12,7 @@ export function dbToInternal(user: IMUser): IUser {
     verified: user.verified,
     phoneVerified: user.phoneVerified,
     status: user.status,
+    groups: user.groups ?? [],
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -30,5 +31,6 @@ export function internalToDb(
     verified: user.verified,
     phoneVerified: user.phoneVerified,
     status: user.status,
+    groups: user.groups ?? [],
   };
 }

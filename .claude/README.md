@@ -19,6 +19,8 @@ This kit is maintained in **ai-backend-kit** and synced into each backend servic
 
 Broad request / end-to-end feature or bugfix / chain several agents → **`/orchestrate`** ([skill](skills/orchestrate/SKILL.md)): the main thread classifies intent, dispatches `agt-*` subagents, and enforces gates.
 
+Map a **divergent** (or overridden) repo as-is / mine patterns / consolidate / steward rules → **`/architecture-discovery`** ([skill](skills/architecture-discovery/SKILL.md)): thin Path D pipeline (`agt-architecture-probe` → `agt-pattern-miner` → `agt-architecture-analyst` → optional steward + gate). Aligned kit-layered services skip discovery — see [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md).
+
 Obvious single-specialist request (PR only, Jira only, review only) → invoke that subagent directly.
 
 ## Rules index (`rules/`)
@@ -29,6 +31,7 @@ Naming: plain `kebab-case.md` for layer/subject rules; `meta-<kebab>.md` for met
 |------|---------|-------|
 | [business-rules-layers.md](rules/business-rules-layers.md) | always | Business rules in Service; forbidden in Repository and Controller |
 | [git-no-ai-attribution.md](rules/git-no-ai-attribution.md) | always | Never add AI attribution to commits or PRs |
+| [security-baseline.md](rules/security-baseline.md) | always | Authorization, injection, secrets, data exposure by layer |
 | [domain.md](rules/domain.md) | `src/domain/**` | Domain — interfaces, entities, repo/service contracts |
 | [application.md](rules/application.md) | `src/application/**` | Application — thin Express controllers, error/auth pattern |
 | [infraestructure.md](rules/infraestructure.md) | `src/infraestructure/**` | Infraestructure — Mongo `IM*`, adapters, repositories |
@@ -54,6 +57,17 @@ Project core (spelling, layer boundaries, gates) lives in [CLAUDE.md](CLAUDE.md)
 | Create / extend Jest unit & integration tests | **`agt-test-author`** |
 | Spec procedure (Specify → Design → Tasks) | **`/spec-driven`** |
 | Templates / folder convention | [`docs/specs/`](../docs/specs/README.md) |
+
+## Architecture discovery toolkit
+
+| Need | Use |
+|------|-----|
+| Map repo architecture as-is / mine patterns (Path D) | **`/architecture-discovery`** — see [ARCHITECTURE-DISCOVERY.md](ARCHITECTURE-DISCOVERY.md) |
+| Profile only | **`agt-architecture-probe`** |
+| Patterns catalog only | **`agt-pattern-miner`** |
+| Consolidated analysis `.md` | **`agt-architecture-analyst`** → `docs/architecture/analysis.md` |
+| Propose / apply rules (human gate) | **`agt-pattern-steward`** |
+| Layer audit on a **kit-aligned** service | **`agt-architecture-review`** (not discovery) |
 
 ### Artifacts
 
@@ -86,6 +100,7 @@ Project core (spelling, layer boundaries, gates) lives in [CLAUDE.md](CLAUDE.md)
 | [agt-test-runner](agents/sdd/agt-test-runner.md) | sdd | no | Stabilize the Jest suite |
 | [agt-verifier](agents/sdd/agt-verifier.md) | sdd | mostly | Delivery evidence gate |
 | [agt-code-review](agents/review/agt-code-review.md) | review | yes | Spec ↔ code review, typed findings |
+| [agt-security-review](agents/review/agt-security-review.md) | review | yes | Adversarial security pass (OWASP), `BLOCKING_SECURITY` |
 | [agt-architecture-review](agents/review/agt-architecture-review.md) | review | yes | Layer / coupling audit (post-code) |
 | [agt-code-quality](agents/review/agt-code-quality.md) | review | yes | Naming + REST smoke + light layers |
 | [agt-rest-endpoint-design](agents/review/agt-rest-endpoint-design.md) | review | yes | Endpoint inventory, YAML parity |
@@ -94,6 +109,7 @@ Project core (spelling, layer boundaries, gates) lives in [CLAUDE.md](CLAUDE.md)
 | [agt-jira-workflow](agents/ops/agt-jira-workflow.md) | ops | no | Jira read / create (org defaults) |
 | [agt-architecture-probe](agents/discovery/agt-architecture-probe.md) | discovery | no | As-is architecture profile |
 | [agt-pattern-miner](agents/discovery/agt-pattern-miner.md) | discovery | no | Pattern catalog with evidence |
+| [agt-architecture-analyst](agents/discovery/agt-architecture-analyst.md) | discovery | no | Consolidated `analysis.md` |
 | [agt-pattern-steward](agents/discovery/agt-pattern-steward.md) | discovery | gated | Proposals + rule drafts; rules after `APPROVED` |
 
 ## Skills index (`skills/`)
@@ -119,7 +135,7 @@ Directory name = command. Skills marked **manual** have `disable-model-invocatio
 | [/new-context](skills/new-context/SKILL.md) | New bounded context end-to-end |
 | [/add-http-endpoint](skills/add-http-endpoint/SKILL.md) | New route in an existing context |
 | [/mongo-persistence](skills/mongo-persistence/SKILL.md) | `IM*`, adapter, Read/Write repos |
-| [/sqs-messaging](skills/sqs-messaging/SKILL.md) | SQS producer/consumer (domain contract + infra) |
+| [/kafka-messaging](skills/kafka-messaging/SKILL.md) | Kafka producer/consumer (domain contract + infra) |
 | [/domain-errors](skills/domain-errors/SKILL.md) | `EErrorCode`, catalog, translated HTTP errors |
 | [/openapi-contract](skills/openapi-contract/SKILL.md) | Keep `service.yaml` aligned |
 | [/tests-layered](skills/tests-layered/SKILL.md) | Jest unit/int layout; `when`/`should`; mock policy |
@@ -130,6 +146,9 @@ Directory name = command. Skills marked **manual** have `disable-model-invocatio
 |-------|---------|
 | [/review-naming](skills/review-naming/SKILL.md) | Identifier audit by layer (`context: fork` → `agt-naming-refactor`) |
 | [/review-rest-endpoints](skills/review-rest-endpoints/SKILL.md) | Routes, verbs, YAML parity (fork → `agt-rest-endpoint-design`; + [reference-rest.md](skills/review-rest-endpoints/reference-rest.md)) |
+| [/review-security](skills/review-security/SKILL.md) | Authorization, injection, secrets, exposure (fork → `agt-security-review`; + [reference-owasp.md](skills/review-security/reference-owasp.md)) |
+
+`/review-security` is this kit's audit, scoped to the layered backend contract. It is **not** Claude Code's built-in `/security-review` command — invoke `/review-security` to get the kit behavior.
 
 ### Discovery
 
@@ -153,6 +172,7 @@ Directory name = command. Skills marked **manual** have `disable-model-invocatio
 | **Naming + REST + light layers (PR review)** | **`agt-code-quality`** |
 | **REST/OpenAPI design only** | **`agt-rest-endpoint-design`** or `/review-rest-endpoints` |
 | **Rename suggestions (read-only)** | **`agt-naming-refactor`** or `/review-naming` |
+| **Security / OWASP audit of a diff** | **`agt-security-review`** or `/review-security` |
 
 Map: rule → skill → agent:
 
@@ -161,6 +181,9 @@ semantic-quality (rule)
   ├── review-naming (skill) ──► agt-naming-refactor
   └── review-rest-endpoints (skill) ──► agt-rest-endpoint-design
          └── agt-code-quality (combines both + light layers)
+
+security-baseline (rule)
+  └── review-security (skill) ──► agt-security-review
 ```
 
 ### Project conventions (quick)

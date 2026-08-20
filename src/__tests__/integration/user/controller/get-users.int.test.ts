@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { UserModel } from '../../../../infraestructure/db/mongo/models/user.model';
@@ -11,7 +12,7 @@ describe('when we list all users via HTTP', () => {
 
     const { body, statusCode } = await supertest(app.app)
       .get('/users')
-      .set('x-user-groups', EUserGroup.BACKOFFICE);
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
 
     expect(statusCode).toBe(200);
     expect(Array.isArray(body)).toBe(true);

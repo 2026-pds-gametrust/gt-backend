@@ -43,7 +43,7 @@ Walk the full flow of the request or event and answer:
 - Who owns the data?
 - Which internal contracts change (`I*`, repository contracts, messaging
   contracts)?
-- Which external contracts change (OpenAPI, SQS events)?
+- Which external contracts change (OpenAPI, Kafka events)?
 - What persists and where (`IM*`, schema, adapter)?
 - What happens on error, retry, and concurrent execution?
 - What must be observable (logs, metrics) — without sensitive data?
@@ -54,7 +54,7 @@ Walk the full flow of the request or event and answer:
 |---------|-------|
 | Business rules, entities, `I*`, services, repo/messaging contracts, domain errors | Domain |
 | Controller, `req`/`res`, middleware, HTTP error translation | Application |
-| Schema/model `IM*`, concrete repository, adapter, concrete SQS messaging, clients | Infraestructure |
+| Schema/model `IM*`, concrete repository, adapter, concrete Kafka, clients | Infraestructure |
 | Factories / composition | Configuration |
 | OpenAPI `service.yaml` | Contracts |
 | Tests | `src/__tests__` |

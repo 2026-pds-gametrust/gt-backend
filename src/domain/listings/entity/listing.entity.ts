@@ -1,4 +1,5 @@
 import { createMoney } from '../../common/types/money';
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { EListingStatus } from './enums/EListingStatus';
 import { EShippingMode } from './enums/EShippingMode';
 import { EWarrantyType } from './enums/EWarrantyType';
@@ -51,6 +52,8 @@ export class ListingServiceEntity implements IListing {
       coverPhotoUrl:
         listing.media.coverPhotoUrl?.trim() ||
         listing.media.photoUrls?.[0],
+      assetIds: listing.media.assetIds,
+      videoAssetId: listing.media.videoAssetId?.trim(),
     };
     this.shipping = {
       ...listing.shipping,
@@ -73,18 +76,10 @@ export class ListingServiceEntity implements IListing {
   }
 
   private validate(listing: IListing): void {
-    if (!listing.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!listing.sellerId?.trim()) {
-      throw new Error('sellerId is required');
-    }
-    if (!listing.productId?.trim()) {
-      throw new Error('productId is required');
-    }
-    if (!listing.title?.trim()) {
-      throw new Error('title is required');
-    }
+    requireNonEmptyString(listing.id, 'id');
+    requireNonEmptyString(listing.sellerId, 'sellerId');
+    requireNonEmptyString(listing.productId, 'productId');
+    requireNonEmptyString(listing.title, 'title');
     if (listing.quantity !== undefined && listing.quantity !== 1) {
       throw new Error('quantity must be 1');
     }

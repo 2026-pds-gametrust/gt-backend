@@ -67,7 +67,7 @@ Before validating, mentally list promised deliverables:
 - repositories
 - adapters
 - factories
-- SQS events
+- Kafka events
 - tests
 - OpenAPI contracts
 - bootstrap registrations
@@ -223,7 +223,7 @@ Validate adherence to `AGENTS.md` and architecture documentation.
 - models
 - schemas
 - concrete external clients
-- concrete SQS producers
+- concrete Kafka producers
 
 #### Application must not
 

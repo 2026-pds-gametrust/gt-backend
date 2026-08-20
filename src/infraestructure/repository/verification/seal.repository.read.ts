@@ -57,4 +57,26 @@ export class SealRepositoryRead implements ISealRepositoryRead {
       } as IThrowedError;
     }
   }
+
+  async listActiveSealsByListingIds(listingIds: string[]): Promise<ISeal[]> {
+    if (listingIds.length === 0) {
+      return [];
+    }
+    try {
+      const docs = await SealModel.find({
+        listingId: { $in: listingIds },
+        status: ESealStatus.GRANTED,
+      });
+      return docs.map(dbToInternal);
+    } catch (error: any) {
+      serviceLogErrorHandler(error, {
+        eventName: 'SealRepositoryRead.listActiveSealsByListingIds',
+        eventData: { listingIdsCount: listingIds.length },
+      });
+      throw {
+        status: 500,
+        errorCode: EErrorCode.DATABASE_ERROR,
+      } as IThrowedError;
+    }
+  }
 }

@@ -12,6 +12,7 @@ export const EvidenceItemSchema = new Schema<IMEvidenceItem>(
       required: true,
     },
     storageKey: { type: String, required: true },
+    assetId: { type: String },
     contentHash: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false }, collection: 'evidence_items' },

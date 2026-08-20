@@ -19,7 +19,7 @@ Your focus is ensuring changes in `src/` do not break:
 - factories
 - adapters
 - HTTP flows
-- SQS/messaging integrations
+- Kafka/messaging integrations
 
 ## Source of truth
 
@@ -57,7 +57,7 @@ Also validate indirect impact on:
 - controllers
 - services
 - OpenAPI contracts
-- SQS/events
+- Kafka/events
 
 ## Execution strategy
 
@@ -263,7 +263,7 @@ When tests break due to HTTP change, validate:
 - controller diverges from spec
 - test diverges from official contract
 
-### 9. SQS / events
+### 9. Kafka / events
 
 When messaging exists, validate:
 

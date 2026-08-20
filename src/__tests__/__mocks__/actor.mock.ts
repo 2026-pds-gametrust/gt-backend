@@ -2,7 +2,15 @@ import { EUserGroup } from '@sauvvitech/st-packages';
 import { IActorContext } from '../../domain/common/types/actor-context';
 
 export function sellerActor(actorId: string): IActorContext {
-  return { actorId, groups: [] };
+  return { actorId, groups: [EUserGroup.APP_USER] };
+}
+
+export function ownerActor(actorId: string): IActorContext {
+  return { actorId, groups: [EUserGroup.APP_USER] };
+}
+
+export function adminActor(actorId = 'admin-actor'): IActorContext {
+  return { actorId, groups: [EUserGroup.ADMIN] };
 }
 
 export function backofficeActor(

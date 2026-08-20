@@ -14,6 +14,7 @@ export const validListingMock = (override?: Partial<IListing>): IListing => ({
   currency: 'BRL',
   media: {
     photoUrls: ['https://cdn.example.com/photo1.jpg'],
+    videoUrl: 'https://cdn.example.com/video1.mp4',
   },
   shipping: {
     modes: [EShippingMode.PICKUP],

@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -23,7 +24,7 @@ describe('when we open assign and approve a verification case via HTTP', () => {
 
     await supertest(app.app)
       .post('/products')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: product.id,
         categoryId: product.categoryId,
@@ -40,7 +41,7 @@ describe('when we open assign and approve a verification case via HTTP', () => {
 
     const createdListing = await supertest(app.app)
       .post('/listings')
-      .set('x-user-id', user.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
       .send({
         id: listing.id,
         sellerId: listing.sellerId,
@@ -64,7 +65,7 @@ describe('when we open assign and approve a verification case via HTTP', () => {
 
     const assigned = await supertest(app.app)
       .post(`/verification-cases/${caseId}/assign`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({ moderatorId: 'mod-1' });
     expect(assigned.statusCode).toBe(200);
     expect(assigned.body.status).toBe('IN_REVIEW');
@@ -80,7 +81,7 @@ describe('when we open assign and approve a verification case via HTTP', () => {
 
     const approved = await supertest(app.app)
       .post(`/verification-cases/${caseId}/approve`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({});
     expect(approved.statusCode).toBe(200);
     expect(approved.body.status).toBe('APPROVED');

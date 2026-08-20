@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { EListingStatus } from '../../../../domain/listings/entity/enums/EListingStatus';
@@ -49,7 +50,7 @@ describe('when we reconcile search read models via HTTP', () => {
 
     const response = await supertest(app.app)
       .post('/search/reconcile')
-      .set('x-user-groups', EUserGroup.BACKOFFICE);
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
 
     expect(response.statusCode).toBe(200);
     expect(response.body.listingsReindexed).toBeGreaterThanOrEqual(1);

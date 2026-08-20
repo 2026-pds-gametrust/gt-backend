@@ -4,6 +4,8 @@ import { IActorContext } from '../../common/types/actor-context';
 import { IUserRepositoryRead } from '../../identity/repository/user.repository.read';
 import { IProductRepositoryRead } from '../../catalog/repository/product.repository.read';
 import { IPriceHistoryRepositoryWrite } from '../../catalog/repository/price-history.repository.write';
+import { IVerificationCaseRepositoryRead } from '../../verification/repository/verification-case.repository.read';
+import { ISealRepositoryRead } from '../../verification/repository/seal.repository.read';
 import { EListingCondition } from '../entity/enums/EListingCondition';
 import { EListingStatus } from '../entity/enums/EListingStatus';
 import {
@@ -13,9 +15,14 @@ import {
   IListingWarranty,
   TListingAttributeValue,
 } from '../entity/interfaces/listing.interface';
+import {
+  IListingPage,
+  ISellerListingPage,
+} from '../entity/interfaces/seller-listing.interface';
 import { IListingEvent } from '../entity/interfaces/listing-event.interface';
 import { IListingEventRepositoryRead } from '../repository/listing-event.repository.read';
 import { IListingEventRepositoryWrite } from '../repository/listing-event.repository.write';
+import { IMediaClient } from '../../media/client/media.client';
 import { IListingRepositoryRead } from '../repository/listing.repository.read';
 import { IListingRepositoryWrite } from '../repository/listing.repository.write';
 
@@ -69,6 +76,19 @@ export interface IParamsListingService {
   productRepositoryRead: IProductRepositoryRead;
   priceHistoryRepositoryWrite: IPriceHistoryRepositoryWrite;
   eventPublisher: IEventPublisher;
+  sealRepositoryRead: ISealRepositoryRead;
+  mediaClient?: IMediaClient;
+  verificationCaseRepositoryRead?: IVerificationCaseRepositoryRead;
+}
+
+export interface IParamsListMyListings {
+  status?: EListingStatus;
+  limit?: number;
+  offset?: number;
+}
+
+export interface IParamsListListingsForViewer {
+  sellerId?: string;
 }
 
 export interface IListingService {
@@ -76,7 +96,16 @@ export interface IListingService {
     params: IParamsCreateListing,
     actor: IActorContext,
   ): Promise<IListing>;
-  getListingById(id: string): Promise<IListing>;
+  getListingById(id: string, actor?: IActorContext): Promise<IListing>;
+  listPublicListings(params?: IParamsListMyListings): Promise<IListingPage>;
+  listMyListings(
+    actor: IActorContext,
+    params?: IParamsListMyListings,
+  ): Promise<ISellerListingPage>;
+  listListingsForViewer(
+    actor: IActorContext,
+    options?: IParamsListListingsForViewer,
+  ): Promise<IListing[]>;
   listListings(filter?: Partial<IListing>): Promise<IListing[]>;
   updateListingById(
     id: string,
@@ -86,6 +115,8 @@ export interface IListingService {
   submitListing(id: string, actor: IActorContext): Promise<IListing>;
   publishListing(id: string, actor: IActorContext): Promise<IListing>;
   pauseListing(id: string, actor: IActorContext): Promise<IListing>;
-  listEvents(listingId: string): Promise<IListingEvent[]>;
+  listEvents(listingId: string, actor?: IActorContext): Promise<IListingEvent[]>;
   applyVerificationApproved(envelope: IEventEnvelope): Promise<void>;
+  applyVerificationChangesRequested(envelope: IEventEnvelope): Promise<void>;
+  applyVerificationRejected(envelope: IEventEnvelope): Promise<void>;
 }

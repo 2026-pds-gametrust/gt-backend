@@ -55,8 +55,20 @@ describe('when we submit without photos', () => {
       validListingMock({
         sellerId: user.id,
         productId: product.id,
-        media: { photoUrls: [] },
+        shipping: { modes: [EShippingMode.PICKUP] },
       }),
+      sellerActor(user.id),
+    );
+    await listingService.updateListingById(
+      created.id,
+      {
+        listingData: {
+          media: {
+            photoUrls: [],
+            videoUrl: created.media.videoUrl,
+          },
+        },
+      },
       sellerActor(user.id),
     );
 
@@ -65,6 +77,41 @@ describe('when we submit without photos', () => {
     ).rejects.toMatchObject({
       status: 400,
       errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.photoUrls' },
+    });
+  });
+});
+
+describe('when we submit without video', () => {
+  it('should reject with FIELD_INVALID', async () => {
+    const { user, product } = await seedSellerAndProduct();
+    const created = await listingService.createListing(
+      validListingMock({
+        sellerId: user.id,
+        productId: product.id,
+        shipping: { modes: [EShippingMode.PICKUP] },
+      }),
+      sellerActor(user.id),
+    );
+    await listingService.updateListingById(
+      created.id,
+      {
+        listingData: {
+          media: {
+            photoUrls: created.media.photoUrls,
+            videoUrl: undefined,
+          },
+        },
+      },
+      sellerActor(user.id),
+    );
+
+    await expect(
+      listingService.submitListing(created.id, sellerActor(user.id)),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+      details: { field: 'media.videoUrl' },
     });
   });
 });

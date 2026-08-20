@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -34,6 +35,52 @@ describe('when we search via HTTP', () => {
     expect(response.body.length).toBeGreaterThanOrEqual(1);
     expect(response.body[0].listingId).toBe(listingId);
   });
+
+  it('should return 200 when q is omitted', async () => {
+    const response = await supertest(app.app).get('/search');
+
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
+
+  it('should return 200 when q is an empty string', async () => {
+    const response = await supertest(app.app).get('/search').query({ q: '' });
+
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
+
+  it('should omit null optional fields so the contract stays valid', async () => {
+    const listingId = new Types.ObjectId().toHexString();
+    const uniqueToken = `nobrand-${listingId}`;
+    await SearchDocumentModel.create({
+      id: listingId,
+      listingId,
+      productId: new Types.ObjectId().toHexString(),
+      categoryId: new Types.ObjectId().toHexString(),
+      sellerId: new Types.ObjectId().toHexString(),
+      title: uniqueToken,
+      brand: null,
+      model: null,
+      condition: 'GOOD',
+      status: 'PUBLISHED',
+      priceCents: 150000,
+      currency: 'BRL',
+      searchText: uniqueToken,
+      embedding: null,
+      sourceOccurredAt: new Date(),
+    });
+
+    const response = await supertest(app.app).get('/search').query({
+      q: uniqueToken,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0].listingId).toBe(listingId);
+    expect(response.body[0].brand).toBeUndefined();
+    expect(response.body[0].model).toBeUndefined();
+  });
 });
 
 describe('when we list synonyms via HTTP', () => {
@@ -43,7 +90,7 @@ describe('when we list synonyms via HTTP', () => {
 
     await supertest(app.app)
       .post('/categories')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: new Types.ObjectId().toHexString(),
         slug: `gpus-${Date.now()}`,

@@ -1,4 +1,5 @@
 import { IEventPublisher } from '../../common/messaging/event-publisher.interface';
+import { IMediaClient } from '../../media/client/media.client';
 import { EProductStatus } from '../entity/enums/EProductStatus';
 import { IProduct, TProductSpecValue } from '../entity/interfaces/product.interface';
 import { ICategoryRepositoryRead } from '../repository/category.repository.read';
@@ -18,6 +19,7 @@ export interface IParamsCreateProduct {
   sku?: string;
   specs?: Record<string, TProductSpecValue>;
   imageUrls?: string[];
+  imageAssetIds?: string[];
   referencePriceCents?: number;
   currency?: string;
   status?: EProductStatus;
@@ -35,6 +37,7 @@ export interface IParamsUpdateProduct {
       | 'sku'
       | 'specs'
       | 'imageUrls'
+      | 'imageAssetIds'
       | 'referencePriceCents'
       | 'currency'
       | 'status'
@@ -48,6 +51,7 @@ export interface IParamsProductService {
   categoryRepositoryRead: ICategoryRepositoryRead;
   priceHistoryRepositoryWrite: IPriceHistoryRepositoryWrite;
   eventPublisher: IEventPublisher;
+  mediaClient?: IMediaClient;
 }
 
 export interface IProductService {

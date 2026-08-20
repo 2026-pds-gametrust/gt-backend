@@ -14,6 +14,7 @@ export interface IProduct {
   sku?: string;
   specs?: Record<string, TProductSpecValue>;
   imageUrls?: string[];
+  imageAssetIds?: string[];
   referencePriceCents?: number;
   currency?: string;
   status: EProductStatus;

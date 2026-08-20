@@ -15,11 +15,19 @@ function buildService(overrides: {
   profiles?: Map<string, IProfile>;
   users?: Map<string, IUser>;
   updateProfileById?: (id: string, data: Partial<IProfile>) => Promise<IProfile | null>;
+  cepLookup?: { lookup: jest.Mock };
+  geocoder?: { geocode: jest.Mock };
 } = {}) {
   const profiles = overrides.profiles ?? new Map<string, IProfile>();
   const users = overrides.users ?? new Map<string, IUser>();
   const publisher: IEventPublisher = {
     publish: jest.fn().mockResolvedValue(undefined),
+  };
+  const cepLookup = overrides.cepLookup ?? {
+    lookup: jest.fn().mockResolvedValue(null),
+  };
+  const geocoder = overrides.geocoder ?? {
+    geocode: jest.fn().mockResolvedValue(null),
   };
 
   const service = new ProfileService({
@@ -29,6 +37,7 @@ function buildService(overrides: {
       findProfileByUserId: async (userId: string) =>
         profiles.get(userId) ?? null,
       listProfiles: async () => [...profiles.values()],
+      findNear: async () => [],
     },
     profileRepositoryWrite: {
       createProfile: async (profile: IProfile) => {
@@ -53,13 +62,15 @@ function buildService(overrides: {
       listUsers: async () => [...users.values()],
     },
     eventPublisher: publisher,
-  } as never);
+    cepLookup: cepLookup as never,
+    geocoder: geocoder as never,
+  });
 
-  return { service, profiles, users, publisher };
+  return { service, profiles, users, publisher, cepLookup, geocoder };
 }
 
 describe('when creating a profile without addresses', () => {
-  it('should default addresses to an empty list', async () => {
+  it('should default addresses to an empty list when allowEmptyAddresses', async () => {
     const user = validUserMock();
     const users = new Map([[user.id, user]]);
     const { service } = buildService({ users });
@@ -69,11 +80,33 @@ describe('when creating a profile without addresses', () => {
         id: new Types.ObjectId().toHexString(),
         userId: user.id,
         displayName: 'Solo',
+        allowEmptyAddresses: true,
       },
       sellerActor(user.id),
     );
 
     expect(created.addresses).toEqual([]);
+  });
+
+  it('should reject empty addresses for HTTP create', async () => {
+    const user = validUserMock();
+    const users = new Map([[user.id, user]]);
+    const { service } = buildService({ users });
+
+    await expect(
+      service.createProfile(
+        {
+          id: new Types.ObjectId().toHexString(),
+          userId: user.id,
+          displayName: 'Solo',
+          addresses: [],
+        },
+        sellerActor(user.id),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      errorCode: EErrorCode.FIELD_INVALID,
+    });
   });
 });
 
@@ -392,5 +425,153 @@ describe('when updating a profile successfully by user id', () => {
         }),
       }),
     );
+  });
+});
+
+describe('when enriching addresses on create/update', () => {
+  it('should set geo from BrasilAPI when location is present', async () => {
+    const user = validUserMock();
+    const address = validAddressMock({ complement: undefined });
+    const { service, cepLookup, geocoder } = buildService({
+      users: new Map([[user.id, user]]),
+      cepLookup: {
+        lookup: jest.fn().mockResolvedValue({
+          postalCode: address.postalCode,
+          city: address.city,
+          state: address.state,
+          lat: -23.56,
+          lng: -46.65,
+        }),
+      },
+    });
+
+    const created = await service.createProfile(
+      {
+        id: new Types.ObjectId().toHexString(),
+        userId: user.id,
+        addresses: [address],
+        defaultShippingAddressId: address.id,
+      },
+      sellerActor(user.id),
+    );
+
+    expect(created.addresses[0].geo).toEqual({
+      type: 'Point',
+      coordinates: [-46.65, -23.56],
+    });
+    expect(created.addresses[0].geoSource).toBe('BRASIL_API');
+    expect(geocoder.geocode).not.toHaveBeenCalled();
+    expect(cepLookup.lookup).toHaveBeenCalled();
+  });
+
+  it('should fallback to Nominatim when BrasilAPI has no coordinates', async () => {
+    const user = validUserMock();
+    const address = validAddressMock();
+    const { service, geocoder } = buildService({
+      users: new Map([[user.id, user]]),
+      cepLookup: {
+        lookup: jest.fn().mockResolvedValue({
+          postalCode: address.postalCode,
+          city: address.city,
+          state: address.state,
+        }),
+      },
+      geocoder: {
+        geocode: jest.fn().mockResolvedValue({ lat: -23.5, lng: -46.6 }),
+      },
+    });
+
+    const created = await service.createProfile(
+      {
+        id: new Types.ObjectId().toHexString(),
+        userId: user.id,
+        addresses: [address],
+        defaultShippingAddressId: address.id,
+      },
+      sellerActor(user.id),
+    );
+
+    expect(created.addresses[0].geo).toEqual({
+      type: 'Point',
+      coordinates: [-46.6, -23.5],
+    });
+    expect(created.addresses[0].geoSource).toBe('NOMINATIM');
+    expect(geocoder.geocode).toHaveBeenCalled();
+  });
+
+  it('should persist without geo when both lookups fail', async () => {
+    const user = validUserMock();
+    const address = validAddressMock();
+    const { service } = buildService({
+      users: new Map([[user.id, user]]),
+      cepLookup: {
+        lookup: jest.fn().mockRejectedValue({ status: 502, errorCode: 'MAPS_ERROR' }),
+      },
+      geocoder: {
+        geocode: jest.fn().mockRejectedValue({ status: 502, errorCode: 'MAPS_ERROR' }),
+      },
+    });
+
+    const created = await service.createProfile(
+      {
+        id: new Types.ObjectId().toHexString(),
+        userId: user.id,
+        addresses: [address],
+        defaultShippingAddressId: address.id,
+      },
+      sellerActor(user.id),
+    );
+
+    expect(created.addresses[0].geo).toBeUndefined();
+    expect(created.addresses[0].geoSource).toBeUndefined();
+  });
+});
+
+describe('when projecting profile for viewers', () => {
+  it('should hide street and geo for anonymous viewers', async () => {
+    const user = validUserMock();
+    const address = validAddressMock({
+      geo: { type: 'Point', coordinates: [-46.65, -23.56] },
+      geoSource: 'BRASIL_API' as never,
+    });
+    const profile = validProfileMock({
+      userId: user.id,
+      addresses: [address],
+      defaultShippingAddressId: address.id,
+    });
+    const { service } = buildService({
+      profiles: new Map([[user.id, profile]]),
+    });
+
+    const publicView = await service.getProfileByUserId(user.id);
+
+    expect(publicView.addresses[0].street).toBe('');
+    expect(publicView.addresses[0].geo).toBeUndefined();
+    expect(publicView.addresses[0].geoSource).toBeUndefined();
+    expect(publicView.addresses[0].city).toBe(address.city);
+  });
+
+  it('should return full address for the owner', async () => {
+    const user = validUserMock();
+    const address = validAddressMock({
+      geo: { type: 'Point', coordinates: [-46.65, -23.56] },
+      geoSource: 'BRASIL_API' as never,
+    });
+    const profile = validProfileMock({
+      userId: user.id,
+      addresses: [address],
+      defaultShippingAddressId: address.id,
+    });
+    const { service } = buildService({
+      profiles: new Map([[user.id, profile]]),
+    });
+
+    const ownerView = await service.getProfileByUserId(
+      user.id,
+      sellerActor(user.id),
+    );
+
+    expect(ownerView.addresses[0].street).toBe(address.street);
+    expect(ownerView.addresses[0].geo).toEqual(address.geo);
   });
 });

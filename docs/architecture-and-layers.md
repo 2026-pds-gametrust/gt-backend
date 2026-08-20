@@ -1,6 +1,6 @@
 # Architecture and layers
 
-Reference document for **any backend service** that adopts the kit in [ai-backend-kit](../README.md). Complements [AGENTS.md](../AGENTS.md). Service-specific architecture rules (modules, messaging, consistency, security) live in [docs/architecture/](architecture/00-overview.md).
+Reference document for **any backend service** that adopts the kit in [ai-backend-kit](../README.md). Complements [AGENTS.md](../AGENTS.md).
 
 > The `user` context appears in examples as the **canonical pattern**. Illustrative files: [`examples/canonical-user/`](../examples/canonical-user/). In each service, replace it with the real `<context>` (`order`, `payment`, `catalog`, …).
 
@@ -20,7 +20,7 @@ Standardize a Node.js/TypeScript backend with:
 src/
   domain/            # rules + contracts
   application/       # HTTP (Express)
-  infraestructure/   # Mongo, adapters, concrete repos, clients, concrete messaging (SQS)
+  infraestructure/   # Mongo, adapters, concrete repos, clients, concrete Kafka
   configuration/     # env + factories (DI)
   contracts/         # OpenAPI (service.yaml)
   app.ts             # bootstrap
@@ -38,7 +38,7 @@ __tests__/           # under src/__tests__/ — mirror by layer/context
 - Entities (`*ServiceEntity`) with **local** validation
 - Repository contracts `I*RepositoryRead` / `I*RepositoryWrite`
 - Service contracts (`I*Service`) when the project uses them
-- Messaging contracts (transport-neutral producer interfaces), when events exist
+- Messaging contracts (Kafka interfaces), when events exist
 
 ### Must not contain
 
@@ -96,7 +96,7 @@ try {
 - Pure adapters `dbToInternal` / `internalToDb`
 - Implementations of `I*RepositoryRead` / `I*RepositoryWrite`
 - External HTTP clients
-- Concrete SQS producers/consumers
+- Concrete Kafka producers/consumers
 - Error i18n catalog (`ErrorCatalog`)
 
 ### Repository — allowed
@@ -163,13 +163,11 @@ Product errors originate in the **service** (`IThrowedError` + `EErrorCode`); th
 
 When the service has events:
 
-1. Interface in domain: `src/domain/<context>/messaging/<event>/producer.interface.ts` (transport-neutral)
-2. Implementation in infra: `src/infraestructure/messaging/<event>/producer.sqs.ts` (and `consumer.sqs.ts`)
-3. Inject via factory (`src/configuration/factory/messaging/`)
+1. Interface in domain: `src/domain/<context>/messaging/<event>/producer.interface.kafka.ts`
+2. Implementation in infra: `src/infraestructure/messaging/<event>/producer.kafka.ts`
+3. Inject via factory
 4. Service calls the **interface** after success
 5. Idempotency when applicable
-
-GamerTrust transport standard (topology, DLQ, local dev): [docs/architecture/05-sqs-messaging.md](architecture/05-sqs-messaging.md).
 
 ## 11. Tests
 
@@ -191,4 +189,34 @@ See [`.cursor/rules/rule.tests.mdc`](../.cursor/rules/rule.tests.mdc) / [`.claud
 | Naming/REST quality | `.cursor/QUALITY.md` | `.claude/README.md` (quality section) |
 | Kit adoption | [ADOPTION.md](ADOPTION.md) | [ADOPTION.md](ADOPTION.md) |
 | Skills map | [`.cursor/SKILLS.md`](../.cursor/SKILLS.md) | [`.claude/README.md`](../.claude/README.md) |
+| Security audit | `agt-security-review` + `@skill-review-security` | `agt-security-review` + `/review-security` |
 | Canonical `user` snippets | [`examples/canonical-user/`](../examples/canonical-user/) | idem |
+
+## 13. Security baseline (cross-layer)
+
+Security is not a layer — it is a set of controls, each owned by the layer that can
+actually enforce it. A control implemented in the wrong layer is a finding, exactly
+like a business rule in a repository.
+
+| Control | Owning layer | Enforcement |
+|---------|--------------|-------------|
+| Who is the caller | **Application** | `authorizeByGroup([...])` middleware on every route in `initRoutes()` |
+| May this actor touch **this** record | **Domain** (Service) | Ownership/tenancy check before returning or mutating; throws 403 `FORBIDDEN` |
+| Object format and required fields | **Domain** (Entity) | `*ServiceEntity` invariants |
+| Untrusted value never reaches a query | **Infraestructure** | Cast and validate before building a Mongoose filter; no `$where`, no user-built regex |
+| Nothing internal leaves the service | **Application** | `handleTranslatedError` + `EErrorCode`; no stack trace or driver message in the body |
+| Secrets and env | **Configuration** | Named constants in `env-constants/`; never `process.env` in Domain; never logged |
+| Documented auth surface | **Contracts** | `securitySchemes` + `security` in `service.yaml`, with `401` / `403` on guarded routes |
+
+Consequences that follow from the layer rules in §3–§7:
+
+- Authorization **middleware** proves identity and group; it never proves ownership.
+  A route guarded by `authorizeByGroup(['admin'])` still needs a Service check when the
+  resource belongs to a specific actor.
+- The repository never decides an authorization outcome, for the same reason it never
+  throws a product 404 — it returns data or `null`, and the Service decides.
+- Mass assignment (`{ ...req.body }`) breaks the Entity contract as much as it breaks
+  security: the controller must build the payload from documented fields only.
+
+Rules: [`.cursor/rules/rule.security-baseline.mdc`](../.cursor/rules/rule.security-baseline.mdc) / [`.claude/rules/security-baseline.md`](../.claude/rules/security-baseline.md).
+Audit: `agt-security-review` (OWASP mapping in the `review-security` skill reference).

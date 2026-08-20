@@ -1,6 +1,14 @@
 import { Schema } from 'mongoose';
 import type { IMProfile } from '../models/profile.model';
 
+const GeoPointSchema = new Schema(
+  {
+    type: { type: String, enum: ['Point'], required: true },
+    coordinates: { type: [Number], required: true },
+  },
+  { _id: false },
+);
+
 const AddressSchema = new Schema(
   {
     id: { type: String, required: true },
@@ -16,6 +24,12 @@ const AddressSchema = new Schema(
     country: { type: String, required: true, default: 'BR' },
     isBilling: { type: Boolean, default: false },
     isShipping: { type: Boolean, default: true },
+    geo: { type: GeoPointSchema, required: false },
+    geoSource: {
+      type: String,
+      enum: ['BRASIL_API', 'NOMINATIM'],
+      required: false,
+    },
   },
   { _id: false },
 );
@@ -33,3 +47,5 @@ export const ProfileSchema = new Schema<IMProfile>(
   },
   { timestamps: true, collection: 'profiles' },
 );
+
+ProfileSchema.index({ 'addresses.geo': '2dsphere' });

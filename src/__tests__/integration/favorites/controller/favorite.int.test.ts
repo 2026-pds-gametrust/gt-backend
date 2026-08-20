@@ -1,3 +1,5 @@
+import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import { Types } from 'mongoose';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
@@ -22,7 +24,7 @@ describe('when we manage favorites via HTTP', () => {
 
     const created = await supertest(app.app)
       .post('/favorites')
-      .set('x-user-id', user.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
       .send({
         id: favoriteId,
         userId: 'spoofed-other-user',
@@ -39,7 +41,7 @@ describe('when we manage favorites via HTTP', () => {
 
     const duplicate = await supertest(app.app)
       .post('/favorites')
-      .set('x-user-id', user.id)
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
       .send({
         id: new Types.ObjectId().toHexString(),
         targetType: 'PRODUCT',
@@ -49,13 +51,17 @@ describe('when we manage favorites via HTTP', () => {
 
     const listed = await supertest(app.app)
       .get('/favorites')
-      .query({ userId: user.id });
+      .set(
+        'Authorization',
+        `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`,
+      )
+      .query({ userId: 'spoofed-other-user' });
     expect(listed.statusCode).toBe(200);
     expect(listed.body.length).toBe(1);
 
     const deleted = await supertest(app.app)
       .delete(`/favorites/${favoriteId}`)
-      .set('x-user-id', user.id);
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: user.id, groups: [EUserGroup.APP_USER] })}`)
     expect(deleted.statusCode).toBe(204);
 
     const after = await FavoriteModel.findOne({ id: favoriteId });

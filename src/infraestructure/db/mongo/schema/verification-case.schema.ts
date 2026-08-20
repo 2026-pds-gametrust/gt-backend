@@ -14,6 +14,9 @@ export const VerificationCaseSchema = new Schema<IMVerificationCase>(
     checklist: { type: Schema.Types.Mixed },
     decisionReason: { type: String },
     moderatorId: { type: String },
+    requiredChanges: { type: Schema.Types.Mixed },
+    revisionBaseline: { type: Schema.Types.Mixed },
+    previousCaseId: { type: String },
   },
   { timestamps: true, collection: 'verification_cases' },
 );

@@ -1,3 +1,4 @@
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { ESellerLevel } from './enums/ESellerLevel';
 import { ISellerLevel } from './interfaces/seller-level.interface';
 
@@ -16,12 +17,8 @@ export class SellerLevelServiceEntity implements ISellerLevel {
   }
 
   private validate(sellerLevel: ISellerLevel): void {
-    if (!sellerLevel.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!sellerLevel.sellerId?.trim()) {
-      throw new Error('sellerId is required');
-    }
+    requireNonEmptyString(sellerLevel.id, 'id');
+    requireNonEmptyString(sellerLevel.sellerId, 'sellerId');
     if (!sellerLevel.level) {
       throw new Error('level is required');
     }

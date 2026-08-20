@@ -2,6 +2,8 @@ import { IEventPublisher } from '../../common/messaging/event-publisher.interfac
 import { IActorContext } from '../../common/types/actor-context';
 import { IAddress } from '../entity/interfaces/address.interface';
 import { IProfile, ISetupItem } from '../entity/interfaces/profile.interface';
+import { ICepLookup } from '../ports/cep-lookup.interface';
+import { IGeocoder } from '../ports/geocoder.interface';
 import { IProfileRepositoryRead } from '../repository/profile.repository.read';
 import { IProfileRepositoryWrite } from '../repository/profile.repository.write';
 import { IUserRepositoryRead } from '../repository/user.repository.read';
@@ -15,6 +17,8 @@ export interface IParamsCreateProfile {
   addresses?: IAddress[];
   defaultShippingAddressId?: string;
   setupItems?: ISetupItem[];
+  /** When true (register), empty addresses are allowed. */
+  allowEmptyAddresses?: boolean;
 }
 
 export interface IParamsUpdateProfile {
@@ -31,11 +35,31 @@ export interface IParamsUpdateProfile {
   >;
 }
 
+export interface IParamsFindProfilesNear {
+  lng: number;
+  lat: number;
+  radiusMeters?: number;
+  limit?: number;
+}
+
+export interface IProfileNearPublic {
+  id: string;
+  userId: string;
+  displayName?: string;
+  bio?: string;
+  locationApprox?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  distanceMeters: number;
+}
+
 export interface IParamsProfileService {
   profileRepositoryRead: IProfileRepositoryRead;
   profileRepositoryWrite: IProfileRepositoryWrite;
   userRepositoryRead: IUserRepositoryRead;
   eventPublisher: IEventPublisher;
+  cepLookup: ICepLookup;
+  geocoder: IGeocoder;
 }
 
 export interface IProfileService {
@@ -43,8 +67,8 @@ export interface IProfileService {
     params: IParamsCreateProfile,
     actor: IActorContext,
   ): Promise<IProfile>;
-  getProfileById(id: string): Promise<IProfile>;
-  getProfileByUserId(userId: string): Promise<IProfile>;
+  getProfileById(id: string, actor?: IActorContext): Promise<IProfile>;
+  getProfileByUserId(userId: string, actor?: IActorContext): Promise<IProfile>;
   updateProfileById(
     id: string,
     params: IParamsUpdateProfile,
@@ -56,4 +80,8 @@ export interface IProfileService {
     actor: IActorContext,
   ): Promise<IProfile>;
   listProfiles(filter?: Partial<IProfile>): Promise<IProfile[]>;
+  findProfilesNear(
+    params: IParamsFindProfilesNear,
+  ): Promise<IProfileNearPublic[]>;
+  getMyProfile(actor: IActorContext): Promise<IProfile>;
 }

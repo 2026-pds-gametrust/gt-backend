@@ -72,7 +72,7 @@ The Domain layer must be fully isolated from technical details.
 - import of `Schema`
 - import of `Model`
 - import of `IM*`
-- import of concrete SQS messaging
+- import of concrete Kafka
 - import of concrete HTTP clients
 - import of AWS SDK
 - import of concrete adapters
@@ -299,7 +299,7 @@ Validate:
 - controller uses `IM*`
 - service uses schema/model directly
 
-### 8. SQS / messaging
+### 8. Kafka / messaging
 
 #### Validate
 
@@ -309,7 +309,7 @@ Validate:
 
 #### Report failure when
 
-- domain knows concrete SQS producer
+- domain knows concrete Kafka producer
 - service instantiates producer manually
 
 ### 9. Mandatory naming

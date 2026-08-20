@@ -1,3 +1,11 @@
+import { EGeoSource } from '../enums/EGeoSource';
+
+/** GeoJSON Point — coordinates are [longitude, latitude]. */
+export interface IGeoPoint {
+  type: 'Point';
+  coordinates: [number, number];
+}
+
 export interface IAddress {
   id: string;
   label?: string;
@@ -12,4 +20,6 @@ export interface IAddress {
   country: string;
   isBilling?: boolean;
   isShipping?: boolean;
+  geo?: IGeoPoint;
+  geoSource?: EGeoSource;
 }

@@ -1,4 +1,5 @@
 import { createMoney } from '../../common/types/money';
+import { requireNonEmptyString } from '../../common/types/required-string';
 import { EPriceHistorySource } from './enums/EPriceHistorySource';
 import { IPriceHistory } from './interfaces/price-history.interface';
 
@@ -24,12 +25,8 @@ export class PriceHistoryServiceEntity implements IPriceHistory {
   }
 
   private validate(entry: IPriceHistory): void {
-    if (!entry.id?.trim()) {
-      throw new Error('id is required');
-    }
-    if (!entry.productId?.trim()) {
-      throw new Error('productId is required');
-    }
+    requireNonEmptyString(entry.id, 'id');
+    requireNonEmptyString(entry.productId, 'productId');
     if (!entry.source) {
       throw new Error('source is required');
     }

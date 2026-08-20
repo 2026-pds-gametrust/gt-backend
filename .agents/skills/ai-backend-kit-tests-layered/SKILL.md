@@ -12,7 +12,7 @@ Mirror contexts under `src/__tests__` and use `*.unit.test.ts` / `*.int.test.ts`
   persistence failures appropriate to the layer.
 - Service tests use real in-memory/repository implementations when the project
   pattern requires it; do not replace repositories with broad mocks.
-- Use `jest.spyOn` for external services, SQS, auth, clocks, and unstable boundaries.
+- Use `jest.spyOn` for external services, Kafka, auth, clocks, and unstable boundaries.
 - Controller tests verify status, payload, validation, auth, and translated errors.
 - Repository tests verify adaptation, null-on-missing, queries, and `DATABASE_ERROR`.
 

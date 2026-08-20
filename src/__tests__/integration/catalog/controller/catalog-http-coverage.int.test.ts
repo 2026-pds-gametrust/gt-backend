@@ -1,4 +1,5 @@
 import { EUserGroup } from '@sauvvitech/st-packages';
+import { signTestAccessToken } from '../../../helpers/sign-test-access-token';
 import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { validAttributeDefMock } from '../../../__mocks__/category-attribute-schema.mock';
@@ -11,8 +12,7 @@ describe('when catalog HTTP read and update routes are called', () => {
     const category = validCategoryMock();
     const createdCategory = await supertest(app.app)
       .post('/categories')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: category.id,
         name: category.name,
@@ -37,16 +37,14 @@ describe('when catalog HTTP read and update routes are called', () => {
 
     const updatedCategory = await supertest(app.app)
       .put(`/categories/${category.id}`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({ name: `${category.name} Updated` });
     expect(updatedCategory.statusCode).toBe(200);
     expect(updatedCategory.body.name).toBe(`${category.name} Updated`);
 
     const schema = await supertest(app.app)
       .put(`/categories/${category.id}/attribute-schema`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         attributes: [validAttributeDefMock()],
       });
@@ -60,8 +58,7 @@ describe('when catalog HTTP read and update routes are called', () => {
     const service = validServiceTaxonomyMock();
     const createdService = await supertest(app.app)
       .post('/services')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: service.id,
         name: service.name,
@@ -79,8 +76,7 @@ describe('when catalog HTTP read and update routes are called', () => {
 
     const updatedService = await supertest(app.app)
       .put(`/services/${service.id}`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({ name: `${service.name} Updated` });
     expect(updatedService.statusCode).toBe(200);
 
@@ -90,8 +86,7 @@ describe('when catalog HTTP read and update routes are called', () => {
     });
     const createdProduct = await supertest(app.app)
       .post('/products')
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({
         id: product.id,
         categoryId: product.categoryId,
@@ -115,8 +110,7 @@ describe('when catalog HTTP read and update routes are called', () => {
 
     const updatedProduct = await supertest(app.app)
       .put(`/products/${product.id}`)
-      .set('x-user-groups', EUserGroup.BACKOFFICE)
-      .set('x-user-id', 'backoffice-actor')
+      .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({ brand: `${product.brand}-X` });
     expect(updatedProduct.statusCode).toBe(200);
   });

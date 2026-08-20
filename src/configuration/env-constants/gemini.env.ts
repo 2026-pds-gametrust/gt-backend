@@ -12,3 +12,15 @@ export const GEMINI_ANALYSIS_MAX_PHOTOS = Number(
 export const GEMINI_ANALYSIS_MAX_VIDEO_BYTES = Number(
   process.env.GEMINI_ANALYSIS_MAX_VIDEO_BYTES ?? 10 * 1024 * 1024,
 );
+
+/** Dedicated enable flag for possession-code Validação IA (DEC-PCA / D10). */
+export const GEMINI_PROOF_CODE_ANALYSIS_ENABLED =
+  process.env.GEMINI_PROOF_CODE_ANALYSIS_ENABLED === 'true';
+export const GEMINI_PROOF_CODE_ANALYSIS_MAX_PHOTOS = Number(
+  process.env.GEMINI_PROOF_CODE_ANALYSIS_MAX_PHOTOS ??
+    GEMINI_ANALYSIS_MAX_PHOTOS,
+);
+export const GEMINI_PROOF_CODE_ANALYSIS_MAX_VIDEO_BYTES = Number(
+  process.env.GEMINI_PROOF_CODE_ANALYSIS_MAX_VIDEO_BYTES ??
+    GEMINI_ANALYSIS_MAX_VIDEO_BYTES,
+);

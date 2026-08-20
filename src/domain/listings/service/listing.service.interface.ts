@@ -119,4 +119,20 @@ export interface IListingService {
   applyVerificationApproved(envelope: IEventEnvelope): Promise<void>;
   applyVerificationChangesRequested(envelope: IEventEnvelope): Promise<void>;
   applyVerificationRejected(envelope: IEventEnvelope): Promise<void>;
+  reserveListingForOrder(
+    listingId: string,
+    orderId: string,
+    actor: IActorContext,
+  ): Promise<IListing>;
+  releaseListingReservation(
+    listingId: string,
+    orderId: string,
+    actor: IActorContext,
+  ): Promise<IListing>;
+  markListingSoldForOrder(
+    listingId: string,
+    orderId: string,
+    actor: IActorContext,
+  ): Promise<IListing>;
+  getPublishedListingForCheckout(listingId: string): Promise<IListing | null>;
 }

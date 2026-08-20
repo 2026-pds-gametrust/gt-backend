@@ -76,8 +76,9 @@ export class SearchController implements IController {
 
   reconcile = async (_req: Request, res: Response): Promise<void> => {
     try {
-      const result = await this.searchReconciliationService.reconcile();
-      res.status(200).json(result);
+      const reconciliationResult =
+        await this.searchReconciliationService.reconcile();
+      res.status(200).json(reconciliationResult);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);
     }

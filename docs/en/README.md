@@ -45,7 +45,7 @@ REST API for the GamerTrust marketplace (Phase 1 — Discovery & Trust). English
 | Kit layers | [docs/architecture-and-layers.md](../architecture-and-layers.md) |
 | Agent contract | [AGENTS.md](../../AGENTS.md) |
 | Documentation hub | [docs/README.md](../README.md) |
-| DeepWiki steering | [`.devin/wiki.json`](../../.devin/wiki.json) |
+| DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) · steering [`.devin/wiki.json`](../../.devin/wiki.json) |
 
 ## Product rules (non-negotiable)
 

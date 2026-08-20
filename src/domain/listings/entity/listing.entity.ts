@@ -95,8 +95,12 @@ export class ListingServiceEntity implements IListing {
     if (!listing.media) {
       throw new Error('media is required');
     }
-    if (!listing.shipping?.modes?.length) {
+    const isDraft = (listing.status ?? EListingStatus.DRAFT) === EListingStatus.DRAFT;
+    if (!isDraft && !listing.shipping?.modes?.length) {
       throw new Error('shipping.modes is required and must be non-empty');
+    }
+    if (!listing.shipping) {
+      throw new Error('shipping is required');
     }
     if (listing.warranty?.type && listing.warranty.type !== EWarrantyType.NONE) {
       if (

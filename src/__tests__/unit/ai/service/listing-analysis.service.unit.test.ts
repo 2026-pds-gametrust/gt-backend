@@ -177,6 +177,208 @@ describe('when requestAnalysis runs with a mocked provider', () => {
 
     expect(result?.status).toBe(EListingAnalysisStatus.UNAVAILABLE);
   });
+
+  it('should retry SUBMIT without video when provider rejects video payload', async () => {
+    const listing = buildListing({ status: EListingStatus.SUBMITTED });
+    const analyses = new Map<string, unknown>();
+    let analyzeCalls = 0;
+
+    const photoAsset = {
+      id: 'asset-photo-1',
+      purpose: 'LISTING',
+      status: 'READY',
+      contentType: 'image/jpeg',
+      bucketClass: 'PUBLIC',
+      ownerId: listing.sellerId,
+      variants: [
+        {
+          size: 'CARD',
+          format: 'JPEG',
+          storageKey: 'photo-key',
+          byteSize: 100,
+        },
+      ],
+    };
+    const videoAsset = {
+      id: 'asset-video-1',
+      purpose: 'LISTING',
+      status: 'READY',
+      contentType: 'video/mp4',
+      bucketClass: 'PUBLIC',
+      ownerId: listing.sellerId,
+      variants: [
+        {
+          size: 'ORIGINAL',
+          format: 'MP4',
+          storageKey: 'video-key',
+          byteSize: 500,
+        },
+      ],
+    };
+
+    const service = new ListingAnalysisService({
+      listingAnalysisRepositoryRead: {
+        findLatestByListingIdAndScope: async () => null,
+        findListingAnalysisById: async () => null,
+        findLatestByListingId: async () => null,
+      },
+      listingAnalysisRepositoryWrite: {
+        createListingAnalysis: async (analysis) => {
+          analyses.set(analysis.id, { ...analysis });
+          return analysis;
+        },
+        updateListingAnalysisById: async (id, data) => {
+          const current = analyses.get(id) as Record<string, unknown>;
+          const updated = { ...current, ...data };
+          analyses.set(id, updated);
+          return updated as never;
+        },
+      },
+      listingRepositoryRead: {
+        findListingById: async () => listing,
+        findListingIdsByMediaAssetId: async () => [],
+      } as never,
+      listingRepositoryWrite: {
+        updateListingById: async () => listing,
+      } as never,
+      mediaAssetRepositoryRead: {
+        findMediaAssetById: async (id: string) =>
+          id === photoAsset.id ? (photoAsset as never) : (videoAsset as never),
+      },
+      objectStorage: {
+        getObject: async ({ key }: { key: string }) =>
+          key === 'photo-key' || key === 'video-key'
+            ? Buffer.from('x'.repeat(64))
+            : null,
+      } as never,
+      verificationCaseRepositoryRead: {
+        findOpenCaseByListingId: async () => null,
+      } as never,
+      verificationCaseRepositoryWrite: {
+        updateVerificationCaseById: async () => null,
+      } as never,
+      analysisProvider: {
+        analyze: async (input) => {
+          analyzeCalls += 1;
+          if (input.video) {
+            throw new Error('gemini_http_400');
+          }
+          return {
+            modelId: 'mock-model',
+            items: [
+              {
+                id: 'photo-front-visible',
+                status: EAnalysisChecklistItemStatus.PASS,
+                weight: 15,
+                reason: 'ok',
+              },
+            ],
+          };
+        },
+      },
+      eventPublisher: { publish: async () => undefined },
+      analysisEnabled: true,
+      maxPhotosToAnalyze: 4,
+      maxVideoBytes: 10_000,
+    });
+
+    const result = await service.requestAnalysis(
+      listing.id,
+      EListingAnalysisScope.SUBMIT,
+    );
+
+    expect(analyzeCalls).toBe(2);
+    expect(result?.status).toBe(EListingAnalysisStatus.COMPLETED);
+  });
+});
+
+describe('when listing analysis encounters EVIDENCE-purpose assets', () => {
+  it('should ignore restricted evidence and not load vault bytes', async () => {
+    // TC-28
+    const listing = buildListing({
+      media: {
+        photoUrls: [],
+        assetIds: ['evidence-asset-1'],
+        videoAssetId: undefined,
+      },
+    });
+    const analyses = new Map<string, unknown>();
+    const getObject = jest.fn();
+    let photosSeen = -1;
+
+    const service = new ListingAnalysisService({
+      listingAnalysisRepositoryRead: {
+        findLatestByListingIdAndScope: async () => null,
+        findListingAnalysisById: async (id) => analyses.get(id) as never,
+        findLatestByListingId: async () => null,
+      },
+      listingAnalysisRepositoryWrite: {
+        createListingAnalysis: async (analysis) => {
+          analyses.set(analysis.id, { ...analysis });
+          return analysis;
+        },
+        updateListingAnalysisById: async (id, data) => {
+          const current = analyses.get(id) as Record<string, unknown>;
+          const updated = { ...current, ...data };
+          analyses.set(id, updated);
+          return updated as never;
+        },
+      },
+      listingRepositoryRead: {
+        findListingById: async () => listing,
+        findListingIdsByMediaAssetId: async () => [],
+      } as never,
+      listingRepositoryWrite: {
+        updateListingById: async () => listing,
+      } as never,
+      mediaAssetRepositoryRead: {
+        findMediaAssetById: async () =>
+          ({
+            id: 'evidence-asset-1',
+            ownerId: listing.sellerId,
+            purpose: 'EVIDENCE',
+            bucketClass: 'RESTRICTED',
+            contentType: 'image/jpeg',
+            byteSize: 100,
+            originalKey: 'restricted/evidence.jpg',
+            status: 'READY',
+            variants: [],
+            createdAt: new Date(),
+          }) as never,
+      },
+      objectStorage: { getObject } as never,
+      verificationCaseRepositoryRead: {
+        findOpenCaseByListingId: async () => null,
+      } as never,
+      verificationCaseRepositoryWrite: {
+        updateVerificationCaseById: async () => null,
+      } as never,
+      analysisProvider: {
+        analyze: async (input) => {
+          photosSeen = input.photos.length;
+          return {
+            modelId: 'mock',
+            items: [
+              {
+                id: 'photo-front-visible',
+                status: EAnalysisChecklistItemStatus.UNCERTAIN,
+                weight: 15,
+                reason: 'Sem mídia pública.',
+              },
+            ],
+          };
+        },
+      },
+      eventPublisher: { publish: async () => undefined },
+      analysisEnabled: true,
+      maxPhotosToAnalyze: 4,
+      maxVideoBytes: 1024,
+    });
+
+    await service.requestAnalysis(listing.id, EListingAnalysisScope.DRAFT);
+    expect(photosSeen).toBe(0);
+    expect(getObject).not.toHaveBeenCalled();
+  });
 });
 
 describe('when handleAnalyzedEvent runs', () => {

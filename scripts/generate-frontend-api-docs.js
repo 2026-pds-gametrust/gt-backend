@@ -152,6 +152,10 @@ const PRODUCT_GAIN = {
         'Case detail and evidence.',
         'Detalhe do caso e evidências.',
       ),
+      '/verification-cases/{id}/proof-code': L(
+        'Possession code for seller capture / moderator frame check — never on public listing APIs.',
+        'Código de posse para o vendedor capturar / Camila conferir no quadro — nunca nas APIs públicas do anúncio.',
+      ),
       '/verification-cases/{id}/assign': L(
         'Assigns a reviewer (ops).',
         'Atribui revisor (operação).',

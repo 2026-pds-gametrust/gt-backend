@@ -1,8 +1,10 @@
 import { EvidenceItemService } from '../../domain/verification/service/evidence-item.service';
 import { EvidenceItemRepositoryRead } from '../../infraestructure/repository/verification/evidence-item.repository.read';
 import { EvidenceItemRepositoryWrite } from '../../infraestructure/repository/verification/evidence-item.repository.write';
+import { ListingRepositoryRead } from '../../infraestructure/repository/listings/listing.repository.read';
 import { VerificationCaseRepositoryRead } from '../../infraestructure/repository/verification/verification-case.repository.read';
 import { MediaAssetServiceFactory } from './media-asset.service.factory';
+import { EventPublisherFactory } from './messaging/event-publisher.factory';
 
 export class EvidenceItemServiceFactory {
   static create() {
@@ -10,7 +12,9 @@ export class EvidenceItemServiceFactory {
       evidenceItemRepositoryRead: new EvidenceItemRepositoryRead(),
       evidenceItemRepositoryWrite: new EvidenceItemRepositoryWrite(),
       verificationCaseRepositoryRead: new VerificationCaseRepositoryRead(),
+      listingRepositoryRead: new ListingRepositoryRead(),
       mediaClient: MediaAssetServiceFactory.create(),
+      eventPublisher: EventPublisherFactory.create(),
     });
   }
 }

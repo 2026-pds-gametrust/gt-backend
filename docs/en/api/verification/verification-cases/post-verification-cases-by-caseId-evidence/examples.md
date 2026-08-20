@@ -6,7 +6,7 @@ Evidence that supports the seal — auditability.
 
 ## Authorization
 
-Public — no Authorization. Discovery and auth register/login/refresh (not CEP).
+Bearer required (`Authorization: Bearer <accessToken>`). Any valid group (`app-user`+).
 
 ## Typical sequence
 
@@ -23,6 +23,7 @@ const res = await fetch('http://localhost:3000/verification-cases/550e8400-e29b-
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${accessToken}`,
   },
   body: JSON.stringify({
   "id": "string",

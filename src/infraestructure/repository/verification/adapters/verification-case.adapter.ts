@@ -12,6 +12,8 @@ export function dbToInternal(doc: IMVerificationCase): IVerificationCase {
     requiredChanges: doc.requiredChanges,
     revisionBaseline: doc.revisionBaseline,
     previousCaseId: doc.previousCaseId,
+    proofCodeHash: doc.proofCodeHash,
+    proofCodeIssuedAt: doc.proofCodeIssuedAt,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -30,5 +32,7 @@ export function internalToDb(
     requiredChanges: verificationCase.requiredChanges,
     revisionBaseline: verificationCase.revisionBaseline,
     previousCaseId: verificationCase.previousCaseId,
+    proofCodeHash: verificationCase.proofCodeHash,
+    proofCodeIssuedAt: verificationCase.proofCodeIssuedAt,
   };
 }

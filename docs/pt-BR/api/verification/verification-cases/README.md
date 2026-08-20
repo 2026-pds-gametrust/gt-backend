@@ -11,5 +11,6 @@ Domínio: `verification`
 | `GET` | `/verification-cases/{id}` | [Get verification case by id](./get-verification-cases-by-id/) |
 | `POST` | `/verification-cases/{id}/approve` | [Approve case and grant seal (backoffice)](./post-verification-cases-by-id-approve/) |
 | `POST` | `/verification-cases/{id}/assign` | [Assign reviewer (backoffice)](./post-verification-cases-by-id-assign/) |
+| `GET` | `/verification-cases/{id}/proof-code` | [Retrieve possession proof code plaintext for an open case](./get-verification-cases-by-id-proof-code/) |
 | `POST` | `/verification-cases/{id}/reject` | [Reject verification case (backoffice)](./post-verification-cases-by-id-reject/) |
 | `POST` | `/verification-cases/{id}/request-changes` | [Request granular listing changes (backoffice)](./post-verification-cases-by-id-request-changes/) |

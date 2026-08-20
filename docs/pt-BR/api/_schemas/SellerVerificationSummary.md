@@ -5,7 +5,7 @@
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|----------|
 | `id` | string | sim |  |
-| `status` | enum(PENDING \| IN_REVIEW \| APPROVED \| CHANGES_REQUESTED \| REJECTED) | sim |  |
+| `status` | VerificationCaseStatus | sim |  |
 | `decisionReason` | string | não | Present when status is REJECTED or CHANGES_REQUESTED and a seller-facing reason exists |
 | `requiredChanges` | array<RequiredChange> | não |  |
 | `previousCaseId` | string | não |  |

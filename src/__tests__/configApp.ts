@@ -4,6 +4,7 @@ import { CORS_ALLOWED_ORIGINS } from '../configuration/env-constants/cors.env';
 import { AuthControllerFactory } from '../configuration/factory/auth.controller.factory';
 import { CatalogControllerFactory } from '../configuration/factory/catalog.controller.factory';
 import { FavoritesControllerFactory } from '../configuration/factory/favorites.controller.factory';
+import { ListingChatControllerFactory } from '../configuration/factory/listing-chat.controller.factory';
 import { IdentityControllerFactory } from '../configuration/factory/identity.controller.factory';
 import { ListingsControllerFactory } from '../configuration/factory/listings.controller.factory';
 import { MediaControllerFactory } from '../configuration/factory/media.controller.factory';
@@ -12,6 +13,8 @@ import { AccessTokenRevocationCheckerFactory } from '../configuration/factory/ac
 import { TokenSignerFactory } from '../configuration/factory/token-signer.factory';
 import { TrustControllerFactory } from '../configuration/factory/trust.controller.factory';
 import { VerificationControllerFactory } from '../configuration/factory/verification.controller.factory';
+import { OrdersControllerFactory } from '../configuration/factory/orders.controller.factory';
+import { ListingAnalysisControllerFactory } from '../configuration/factory/listing-analysis.controller.factory';
 import { Server } from '../domain/server/server';
 
 const OPEN_API_SPEC_FILE_LOCATION = path.resolve(
@@ -35,9 +38,12 @@ export const app = new Server({
     ListingsControllerFactory.create(),
     MediaControllerFactory.create(),
     VerificationControllerFactory.create(),
+    ListingAnalysisControllerFactory.create(),
+    OrdersControllerFactory.create(),
     TrustControllerFactory.create(),
     SearchControllerFactory.create(),
     FavoritesControllerFactory.create(),
+    ListingChatControllerFactory.create(),
   ],
   databaseURI: process.env.DATABASE_URI,
   apiSpecLocation: OPEN_API_SPEC_FILE_LOCATION,

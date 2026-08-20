@@ -2,7 +2,7 @@
 
 **Schema OpenAPI:** `ListingMedia`
 
-Gallery for the used unit. Create requires at least one resolved photo and one resolved video (via asset ids or legacy URLs). assetIds are LISTING image assets only; videoAssetId is one LISTING video asset.
+Gallery for the used unit. Draft create may omit photos/video (empty photoUrls). Submit requires at least one resolved photo and one resolved video (via asset ids or legacy URLs). assetIds are LISTING image assets only; videoAssetId is one LISTING video asset.
 
 
 | Campo | Tipo | Obrigatório | Descrição |

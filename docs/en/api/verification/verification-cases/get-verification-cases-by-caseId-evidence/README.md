@@ -7,11 +7,11 @@
 | **Method** | `GET` |
 | **Path** | `/verification-cases/{caseId}/evidence` |
 | **Success status** | `200` |
-| **Authorization** | Public — no Authorization. Discovery and auth register/login/refresh (not CEP). |
+| **Authorization** | Bearer required (`Authorization: Bearer <accessToken>`). Any valid group (`app-user`+). |
 
 ## What this endpoint does
 
-Evidence that supports the seal — auditability.
+Requires access token; listing owner or BACKOFFICE/ADMIN.
 
 ## Product value
 

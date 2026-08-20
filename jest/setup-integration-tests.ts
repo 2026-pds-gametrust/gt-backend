@@ -3,6 +3,10 @@ import { Server } from '../src/domain/server/server';
 import { CategoryAttributeSchemaModel } from '../src/infraestructure/db/mongo/models/category-attribute-schema.model';
 import { CategoryModel } from '../src/infraestructure/db/mongo/models/category.model';
 import { FavoriteModel } from '../src/infraestructure/db/mongo/models/favorite.model';
+import { ListingChatBlockModel } from '../src/infraestructure/db/mongo/models/listing-chat-block.model';
+import { ListingChatConversationModel } from '../src/infraestructure/db/mongo/models/listing-chat-conversation.model';
+import { ListingChatMessageModel } from '../src/infraestructure/db/mongo/models/listing-chat-message.model';
+import { ListingChatReportModel } from '../src/infraestructure/db/mongo/models/listing-chat-report.model';
 import { AuthRateLimitModel } from '../src/infraestructure/db/mongo/models/auth-rate-limit.model';
 import { CredentialModel } from '../src/infraestructure/db/mongo/models/credential.model';
 import { RefreshSessionModel } from '../src/infraestructure/db/mongo/models/refresh-session.model';
@@ -17,12 +21,22 @@ import { SearchDocumentModel } from '../src/infraestructure/db/mongo/models/sear
 import { ServiceTaxonomyModel } from '../src/infraestructure/db/mongo/models/service-taxonomy.model';
 import { SynonymModel } from '../src/infraestructure/db/mongo/models/synonym.model';
 import { UserModel } from '../src/infraestructure/db/mongo/models/user.model';
+import { OutboxModel } from '../src/infraestructure/db/mongo/models/outbox.model';
+import { OrderModel } from '../src/infraestructure/db/mongo/models/order.model';
+import { PaymentModel } from '../src/infraestructure/db/mongo/models/payment.model';
+import { EscrowHoldModel } from '../src/infraestructure/db/mongo/models/escrow-hold.model';
+import { EventPublisherFactory } from '../src/configuration/factory/messaging/event-publisher.factory';
+import { OrderServiceFactory } from '../src/configuration/factory/order.service.factory';
+import { PaymentServiceFactory } from '../src/configuration/factory/payment.service.factory';
 import { MongooseDatabase } from './setup-db';
 
 let dbInstance: MongooseDatabase;
 export let app: Server;
 
 beforeAll(async () => {
+  EventPublisherFactory.resetForTests();
+  OrderServiceFactory.resetForTests();
+  PaymentServiceFactory.resetForTests();
   const bootstrap = await bootstrapTest();
   dbInstance = bootstrap.dbInstance;
   app = bootstrap.app;
@@ -43,9 +57,17 @@ afterAll(async () => {
   await SynonymModel.deleteMany({});
   await QueryLogModel.deleteMany({});
   await FavoriteModel.deleteMany({});
+  await ListingChatMessageModel.deleteMany({});
+  await ListingChatReportModel.deleteMany({});
+  await ListingChatBlockModel.deleteMany({});
+  await ListingChatConversationModel.deleteMany({});
   await CredentialModel.deleteMany({});
   await RefreshSessionModel.deleteMany({});
   await AuthRateLimitModel.deleteMany({});
   await MediaAssetModel.deleteMany({});
+  await OrderModel.deleteMany({});
+  await PaymentModel.deleteMany({});
+  await EscrowHoldModel.deleteMany({});
+  await OutboxModel.deleteMany({});
   await dbInstance?.close();
 });

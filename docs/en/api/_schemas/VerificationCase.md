@@ -6,13 +6,14 @@
 |-------|------|-------------|----------|
 | `id` | string | yes |  |
 | `listingId` | string | yes |  |
-| `status` | enum(PENDING \| IN_REVIEW \| APPROVED \| CHANGES_REQUESTED \| REJECTED) | yes |  |
+| `status` | VerificationCaseStatus | yes |  |
 | `checklist` | object | no |  |
 | `decisionReason` | string | no |  |
 | `moderatorId` | string | no |  |
 | `requiredChanges` | array<RequiredChange> | no |  |
 | `revisionBaseline` | RevisionBaseline | no |  |
 | `previousCaseId` | string | no |  |
+| `proofCodeIssuedAt` | string (date-time) | no | When the possession challenge was issued (hash is internal-only) |
 | `createdAt` | string (date-time) | yes |  |
 | `updatedAt` | string (date-time) | no |  |
 
@@ -42,6 +43,7 @@
     "description": "string"
   },
   "previousCaseId": "string",
+  "proofCodeIssuedAt": "2026-08-07T12:00:00.000Z",
   "createdAt": "2026-08-07T12:00:00.000Z",
   "updatedAt": "2026-08-07T12:00:00.000Z"
 }

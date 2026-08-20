@@ -39,6 +39,44 @@ tags:
     description: Search documents, synonyms and query observability
   - name: Favorites
     description: User favorites for products and listings
+  - name: ListingChat
+    description: Buyer-seller listing conversations and realtime messaging
+    x-realtime:
+      transport: socket.io
+      path: /listing-chat/socket.io
+      pathEnv: CHAT_SOCKET_IO_PATH
+      auth:
+        type: bearer
+        handshake:
+          authTokenField: token
+          authorizationHeader: Bearer
+      clientEvents:
+        conversation:join:
+          payload:
+            type: object
+            required: [conversationId]
+            properties:
+              conversationId:
+                type: string
+        conversation:leave:
+          payload:
+            type: object
+            required: [conversationId]
+            properties:
+              conversationId:
+                type: string
+      serverEvents:
+        message.created:
+          payload:
+            type: object
+            required: [conversationId, message]
+            properties:
+              conversationId:
+                type: string
+              message:
+                $ref: '#/components/schemas/Message'
+  - name: Orders
+    description: Buy-now checkout and order management
   - name: Media
     description: Image upload grants, processing status and content grants
   - name: AI
@@ -999,6 +1037,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Listing'
+        '400':
+          description: Invalid fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1146,8 +1190,7 @@ paths:
           in: query
           required: false
           schema:
-            type: string
-            enum: [PENDING, IN_REVIEW, APPROVED, REJECTED]
+            $ref: '#/components/schemas/VerificationCaseStatus'
         - name: q
           in: query
           required: false
@@ -1277,6 +1320,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/proof-code-analysis:
+    get:
+      tags:
+        - Verification
+      summary: Get latest possession proof-code AI analysis for a case
+      description: >
+        BACKOFFICE/ADMIN only. Returns advisory Validação IA items for possession
+        code presence/legibility/framing. Never includes proof-code plaintext.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Latest analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofCodeAnalysis'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Case or analysis not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/proof-code-analysis/reanalyze:
+    post:
+      tags:
+        - Verification
+      summary: Enqueue on-demand possession proof-code AI reanalysis
+      description: >
+        BACKOFFICE/ADMIN only. Forces a new analysis run without mutating case
+        status, seals, or human decisions. Returns 202 Accepted with pending snapshot.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Reanalysis accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReanalyzeProofCodeAnalysisResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
   /verification-cases/{id}/assign:
     post:
       tags:
@@ -1315,6 +1420,12 @@ paths:
                 $ref: '#/components/schemas/AuthMiddlewareError'
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '400':
+          description: Minimum proof evidence missing (PHOTO; VIDEO when listing has video)
           content:
             application/json:
               schema:
@@ -1479,12 +1590,85 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TranslatedApiError'
+  /verification-cases/{id}/proof-code:
+    get:
+      tags:
+        - Verification
+      summary: Retrieve possession proof code plaintext for an open case
+      description: |
+        Restricted. Listing owner or BACKOFFICE/ADMIN only.
+        Plaintext is derived from HMAC(pepper, caseId); never stored at rest.
+        Public listing/catalog APIs never include this code.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Possession proof code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofCode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden — not listing owner or backoffice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Case or listing not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+  /listings/{listingId}/proof-code:
+    get:
+      tags:
+        - Verification
+      summary: Ensure open case and retrieve possession proof code for a listing
+      description: |
+        Restricted. Listing owner or BACKOFFICE/ADMIN only.
+        Opens a PENDING verification case (idempotent) when none exists so the
+        seller can display the code while capturing draft media, before submit.
+        Plaintext is never stored at rest.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Possession proof code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofCode'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden — not listing owner or backoffice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '404':
+          description: Listing not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
   /verification-cases/{caseId}/evidence:
     get:
       tags:
         - Verification
-      security: []
       summary: List evidence metadata for a case
+      description: Requires access token; listing owner or BACKOFFICE/ADMIN.
       parameters:
         - name: caseId
           in: path
@@ -1500,6 +1684,14 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EvidenceItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
         '404':
           description: Case not found
           content:
@@ -1509,8 +1701,8 @@ paths:
     post:
       tags:
         - Verification
-      security: []
       summary: Add evidence metadata to a case
+      description: Requires access token; listing owner or BACKOFFICE/ADMIN.
       parameters:
         - name: caseId
           in: path
@@ -1530,6 +1722,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EvidenceItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
         '404':
           description: Case not found
           content:
@@ -1839,6 +2039,111 @@ paths:
                 items:
                   $ref: '#/components/schemas/Synonym'
 
+  /orders:
+    post:
+      tags:
+        - Orders
+      summary: Create a buy-now order for a published listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewOrder'
+      responses:
+        '201':
+          description: Order created awaiting escrow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Listing or order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '409':
+          description: Listing unavailable or already reserved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Orders
+      summary: List orders for the authenticated buyer or seller
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Paginated orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: Get order by id (buyer or seller only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /favorites:
     get:
       tags:
@@ -1932,6 +2237,316 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TranslatedApiError'
+
+  /conversations:
+    post:
+      tags:
+        - ListingChat
+      summary: Open or resume a conversation for a published listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewConversation'
+      responses:
+        '201':
+          description: Conversation opened or resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not eligible (seller on own listing or listing not published)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - ListingChat
+      summary: List conversations for the authenticated actor
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated conversation summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /conversations/{conversationId}:
+    get:
+      tags:
+        - ListingChat
+      summary: Get conversation detail (participant only)
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /conversations/{conversationId}/messages:
+    get:
+      tags:
+        - ListingChat
+      summary: Paginated message history (participant only)
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 50
+        - name: before
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - ListingChat
+      summary: Send a text message (participant only)
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewMessage'
+      responses:
+        '201':
+          description: Message created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conversation blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '422':
+          description: Invalid or rejected content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranslatedApiError'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /conversations/{conversationId}/read:
+    post:
+      tags:
+        - ListingChat
+      summary: Mark conversation as read for the actor
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Unread count cleared
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /conversations/{conversationId}/block:
+    post:
+      tags:
+        - ListingChat
+      summary: Block the other participant across listing conversations
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Participant blocked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /conversations/{conversationId}/reports:
+    post:
+      tags:
+        - ListingChat
+      summary: Report a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewChatReport'
+      responses:
+        '201':
+          description: Report created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /conversations/{conversationId}/messages/{messageId}/reports:
+    post:
+      tags:
+        - ListingChat
+      summary: Report a specific message
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewChatReport'
+      responses:
+        '201':
+          description: Report created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: Rate limit exceeded
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /chat-reports:
+    get:
+      tags:
+        - ListingChat
+      summary: List chat reports (backoffice/admin)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated chat reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReportPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /media/uploads:
     post:
@@ -2788,6 +3403,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/AuthRateLimitError'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TranslatedApiError'
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TranslatedApiError'
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
   schemas:
     AuthMiddlewareError:
       type: object
@@ -3437,8 +4070,9 @@ components:
       required:
         - photoUrls
       description: >
-        Gallery for the used unit. Create requires at least one resolved photo
-        and one resolved video (via asset ids or legacy URLs).
+        Gallery for the used unit. Draft create may omit photos/video
+        (empty photoUrls). Submit requires at least one resolved photo and one
+        resolved video (via asset ids or legacy URLs).
         assetIds are LISTING image assets only; videoAssetId is one LISTING video asset.
       properties:
         photoUrls:
@@ -3495,8 +4129,7 @@ components:
         id:
           type: string
         status:
-          type: string
-          enum: [PENDING, IN_REVIEW, APPROVED, CHANGES_REQUESTED, REJECTED]
+          $ref: '#/components/schemas/VerificationCaseStatus'
         decisionReason:
           type: string
           description: Present when status is REJECTED or CHANGES_REQUESTED and a seller-facing reason exists
@@ -3769,6 +4402,9 @@ components:
           type: string
           format: date-time
 
+    VerificationCaseStatus:
+      type: string
+      enum: [PENDING, IN_REVIEW, APPROVED, CHANGES_REQUESTED, REJECTED]
     VerificationCase:
       type: object
       required: [id, listingId, status, createdAt]
@@ -3778,11 +4414,15 @@ components:
         listingId:
           type: string
         status:
-          type: string
-          enum: [PENDING, IN_REVIEW, APPROVED, CHANGES_REQUESTED, REJECTED]
+          $ref: '#/components/schemas/VerificationCaseStatus'
         checklist:
           type: object
           additionalProperties: true
+          description: >
+            Open checklist object. Known keys include checklist.aiAnalysis
+            (listing public-media Validação IA) and checklist.proofCodeAnalysis
+            (possession-code assist on case evidence; see ProofCodeAnalysisSnapshot).
+            Paths must not be merged into a single analysis job.
         decisionReason:
           type: string
         moderatorId:
@@ -3795,10 +4435,30 @@ components:
           $ref: '#/components/schemas/RevisionBaseline'
         previousCaseId:
           type: string
+        proofCodeIssuedAt:
+          type: string
+          format: date-time
+          description: When the possession challenge was issued (hash is internal-only)
         createdAt:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+    ProofCode:
+      type: object
+      required: [code, caseId, listingId, issuedAt]
+      properties:
+        code:
+          type: string
+          minLength: 8
+          maxLength: 8
+          description: Human-readable possession code (non-ambiguous alphabet)
+        caseId:
+          type: string
+        listingId:
+          type: string
+        issuedAt:
           type: string
           format: date-time
     ModerationQueueStats:
@@ -4214,6 +4874,74 @@ components:
         expiresAt:
           type: string
           format: date-time
+    OrderStatus:
+      type: string
+      enum: [AWAITING_PAYMENT, CONFIRMED, CANCELLED]
+    Order:
+      type: object
+      required:
+        - id
+        - listingId
+        - buyerId
+        - sellerId
+        - shippingMode
+        - priceCents
+        - currency
+        - status
+        - reservationExpiresAt
+        - createdAt
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        buyerId:
+          type: string
+        sellerId:
+          type: string
+        shippingMode:
+          type: string
+          enum: [PICKUP, SHIPPING]
+        priceCents:
+          type: integer
+        currency:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        reservationExpiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NewOrder:
+      type: object
+      required: [listingId, shippingMode]
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        shippingMode:
+          type: string
+          enum: [PICKUP, SHIPPING]
+    OrderPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
     Favorite:
       type: object
       required: [id, userId, targetType, targetId, createdAt]
@@ -4501,3 +5229,287 @@ components:
         updatedAt:
           type: string
           format: date-time
+    ProofCodeAnalysisChecklistItem:
+      type: object
+      required:
+        - id
+        - status
+        - weight
+        - reason
+      properties:
+        id:
+          type: string
+          description: Canonical id (proof-code-present|proof-code-legible|proof-code-in-frame)
+        status:
+          type: string
+          enum: [PASS, FAIL, UNCERTAIN]
+        weight:
+          type: integer
+        reason:
+          type: string
+          description: pt-BR advisory reason; must not echo proof-code plaintext
+        evidenceRef:
+          type: string
+    ProofCodeAnalysisSnapshot:
+      type: object
+      required:
+        - analysisId
+        - status
+        - items
+        - promptVersion
+        - analyzedAt
+      description: >
+        Written to verification_cases.checklist.proofCodeAnalysis only.
+        Distinct from checklist.aiAnalysis (listing public media).
+      properties:
+        analysisId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, UNAVAILABLE]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProofCodeAnalysisChecklistItem'
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        modelId:
+          type: string
+        promptVersion:
+          type: string
+        analyzedAt:
+          type: string
+          format: date-time
+    ProofCodeAnalysis:
+      type: object
+      required:
+        - id
+        - caseId
+        - listingId
+        - status
+        - items
+        - promptVersion
+        - idempotencyKey
+        - createdAt
+      description: Full possession analysis document (no plaintext, no hash/pepper)
+      properties:
+        id:
+          type: string
+        caseId:
+          type: string
+        listingId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, UNAVAILABLE]
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProofCodeAnalysisChecklistItem'
+        modelId:
+          type: string
+        promptVersion:
+          type: string
+        idempotencyKey:
+          type: string
+        failureReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ReanalyzeProofCodeAnalysisResponse:
+      type: object
+      required:
+        - caseId
+        - status
+      properties:
+        caseId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, UNAVAILABLE]
+        analysisId:
+          type: string
+    EConversationStatus:
+      type: string
+      enum: [ACTIVE, BLOCKED]
+    EMessageStatus:
+      type: string
+      enum: [VISIBLE]
+    EChatReportTargetType:
+      type: string
+      enum: [CONVERSATION, MESSAGE]
+    NewConversation:
+      type: object
+      required: [listingId]
+      properties:
+        listingId:
+          type: string
+    Conversation:
+      type: object
+      required:
+        - id
+        - listingId
+        - buyerId
+        - sellerId
+        - status
+        - buyerUnreadCount
+        - sellerUnreadCount
+        - createdAt
+      properties:
+        id:
+          type: string
+        listingId:
+          type: string
+        buyerId:
+          type: string
+        sellerId:
+          type: string
+        status:
+          $ref: '#/components/schemas/EConversationStatus'
+        buyerUnreadCount:
+          type: integer
+          minimum: 0
+        sellerUnreadCount:
+          type: integer
+          minimum: 0
+        lastMessageAt:
+          type: string
+          format: date-time
+        lastMessagePreview:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ConversationSummary:
+      allOf:
+        - $ref: '#/components/schemas/Conversation'
+        - type: object
+          required: [listing, otherParticipant]
+          properties:
+            listing:
+              type: object
+              required: [id, title]
+              properties:
+                id:
+                  type: string
+                title:
+                  type: string
+            otherParticipant:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+                displayName:
+                  type: string
+    ConversationPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+        nextCursor:
+          type: string
+    NewMessage:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    Message:
+      type: object
+      required:
+        - id
+        - conversationId
+        - senderId
+        - body
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        conversationId:
+          type: string
+        senderId:
+          type: string
+        body:
+          type: string
+        status:
+          $ref: '#/components/schemas/EMessageStatus'
+        createdAt:
+          type: string
+          format: date-time
+    MessagePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        nextCursor:
+          type: string
+    NewChatReport:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+    ChatReport:
+      type: object
+      required:
+        - id
+        - reporterId
+        - targetType
+        - targetId
+        - conversationId
+        - reason
+        - createdAt
+      properties:
+        id:
+          type: string
+        reporterId:
+          type: string
+        targetType:
+          $ref: '#/components/schemas/EChatReportTargetType'
+        targetId:
+          type: string
+        conversationId:
+          type: string
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ChatReportPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatReport'
+        nextCursor:
+          type: string

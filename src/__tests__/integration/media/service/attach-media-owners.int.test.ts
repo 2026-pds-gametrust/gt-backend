@@ -207,12 +207,15 @@ describe('when attaching READY evidence assets', () => {
       ownerId: opened.id,
       actorId: user.id,
     });
-    const evidence = await evidenceItemService.addEvidence({
-      id: new Types.ObjectId().toHexString(),
-      caseId: opened.id,
-      type: EEvidenceType.PHOTO,
-      assetId: asset.id,
-    });
+    const evidence = await evidenceItemService.addEvidence(
+      {
+        id: new Types.ObjectId().toHexString(),
+        caseId: opened.id,
+        type: EEvidenceType.PHOTO,
+        assetId: asset.id,
+      },
+      sellerActor(user.id),
+    );
     expect(evidence.storageKey).toBe(asset.originalKey);
     expect(evidence.assetId).toBe(asset.id);
 

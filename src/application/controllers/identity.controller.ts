@@ -207,23 +207,23 @@ export class IdentityController implements IController {
     res: Response,
   ): Promise<void> => {
     try {
-      const result = await this.cepService.lookupByCep(req.params.cep);
+      const cepLookupResult = await this.cepService.lookupByCep(req.params.cep);
       const body: Record<string, unknown> = {
-        postalCode: result.postalCode,
-        street: result.street,
-        district: result.district,
-        city: result.city,
-        state: result.state,
+        postalCode: cepLookupResult.postalCode,
+        street: cepLookupResult.street,
+        district: cepLookupResult.district,
+        city: cepLookupResult.city,
+        state: cepLookupResult.state,
       };
       if (
-        result.lat !== undefined &&
-        result.lng !== undefined &&
-        Number.isFinite(result.lat) &&
-        Number.isFinite(result.lng)
+        cepLookupResult.lat !== undefined &&
+        cepLookupResult.lng !== undefined &&
+        Number.isFinite(cepLookupResult.lat) &&
+        Number.isFinite(cepLookupResult.lng)
       ) {
         body.geo = {
           type: 'Point',
-          coordinates: [result.lng, result.lat],
+          coordinates: [cepLookupResult.lng, cepLookupResult.lat],
         };
       }
       res.status(200).json(body);

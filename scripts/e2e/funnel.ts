@@ -223,6 +223,23 @@ async function main(): Promise<void> {
   record('case opened via SQS', '[async] verification.case', 1, openCase.length,
     openCase.length === 1 ? 'idempotente apesar de 2 eventos' : 'DUPLICADO');
 
+  await post(`/verification-cases/${openCase[0].id}/evidence`, {
+    token: seller.accessToken,
+    body: {
+      id: uniqueId('fun-ph'),
+      type: 'PHOTO',
+      storageKey: 'private/evidence/funnel-photo.jpg',
+    },
+  });
+  await post(`/verification-cases/${openCase[0].id}/evidence`, {
+    token: seller.accessToken,
+    body: {
+      id: uniqueId('fun-vd'),
+      type: 'VIDEO',
+      storageKey: 'private/evidence/funnel-video.mp4',
+    },
+  });
+
   // --- assign + approve -> [SQS] -> auto-publish -> search ---
   const assign = await post(`/verification-cases/${openCase[0].id}/assign`, {
     token: backoffice.accessToken,

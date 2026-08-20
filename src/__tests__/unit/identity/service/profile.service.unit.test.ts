@@ -36,6 +36,10 @@ function buildService(overrides: {
         [...profiles.values()].find((p) => p.id === id) ?? null,
       findProfileByUserId: async (userId: string) =>
         profiles.get(userId) ?? null,
+      findProfilesByUserIds: async (userIds: string[]) =>
+        userIds
+          .map((userId) => profiles.get(userId))
+          .filter((profile): profile is IProfile => profile !== undefined),
       listProfiles: async () => [...profiles.values()],
       findNear: async () => [],
     },
@@ -60,6 +64,11 @@ function buildService(overrides: {
       findUserByEmail: async () => null,
       findUserByCpf: async () => null,
       listUsers: async () => [...users.values()],
+      findUserIdsBySearchQuery: async () => [],
+      findUsersByIds: async (ids: string[]) =>
+        ids
+          .map((id) => users.get(id))
+          .filter((user): user is IUser => user !== undefined),
     },
     eventPublisher: publisher,
     cepLookup: cepLookup as never,

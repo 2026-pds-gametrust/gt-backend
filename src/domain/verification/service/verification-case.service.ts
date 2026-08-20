@@ -1,14 +1,18 @@
 import { IThrowedError } from '@sauvvitech/st-packages';
 import { randomUUID } from 'crypto';
+import { Logger } from 'traceability';
+import { assertOwnerOrAdmin } from '../../common/auth/actor-authorization';
 import { EErrorCode } from '../../common/errors/enums/EErrorCode';
 import { createEventEnvelope } from '../../common/messaging/event-envelope';
 import { IEventPublisher } from '../../common/messaging/event-publisher.interface';
+import { IActorContext } from '../../common/types/actor-context';
 import { isBlank } from '../../common/types/required-string';
 import { IUserRepositoryRead } from '../../identity/repository/user.repository.read';
 import { IProfileRepositoryRead } from '../../identity/repository/profile.repository.read';
 import { IListing } from '../../listings/entity/interfaces/listing.interface';
 import { IListingRepositoryRead } from '../../listings/repository/listing.repository.read';
 import { VerificationCaseServiceEntity } from '../entity/verification-case.entity';
+import { EEvidenceType } from '../entity/enums/EEvidenceType';
 import { ESealType } from '../entity/enums/ESealType';
 import { EVerificationCaseStatus } from '../entity/enums/EVerificationCaseStatus';
 import {
@@ -19,7 +23,11 @@ import {
   MODERATION_QUEUE_DEFAULT_LIMIT,
   MODERATION_QUEUE_MAX_LIMIT,
 } from '../entity/interfaces/moderation-queue.interface';
+import { IProofCode } from '../entity/interfaces/proof-code.interface';
 import { IVerificationCase } from '../entity/interfaces/verification-case.interface';
+import { toPublicVerificationCase } from '../mappers/public-verification-case';
+import { IPossessionProofCodeIssuer } from '../ports/possession-proof-code-issuer.interface';
+import { IEvidenceItemRepositoryRead } from '../repository/evidence-item.repository.read';
 import { IParamsListModerationQueueQuery } from '../repository/verification-case.repository.read';
 import { IVerificationCaseRepositoryRead } from '../repository/verification-case.repository.read';
 import { IVerificationCaseRepositoryWrite } from '../repository/verification-case.repository.write';
@@ -31,12 +39,15 @@ import {
   IParamsRejectCase,
   IParamsRequestChangesCase,
   IParamsVerificationCaseService,
+  IProofCodeAnalysisEnqueuePort,
   IVerificationCaseService,
 } from './verification-case.service.interface';
 import {
   buildRevisionBaseline,
   normalizeRequiredChanges,
 } from '../revision/revision-change.validation';
+import { isMinProofEvidenceEligible } from '../proof/proof-evidence-eligibility';
+import { EProofCodeAnalysisStatus } from '../../ai/entity/enums/EProofCodeAnalysisStatus';
 
 const ALLOWED_TRANSITIONS: Record<
   EVerificationCaseStatus,
@@ -59,28 +70,37 @@ const SEARCH_LISTING_TITLE_LIMIT = 50;
 export class VerificationCaseService implements IVerificationCaseService {
   private readonly verificationCaseRepositoryRead: IVerificationCaseRepositoryRead;
   private readonly verificationCaseRepositoryWrite: IVerificationCaseRepositoryWrite;
+  private readonly evidenceItemRepositoryRead: IEvidenceItemRepositoryRead;
   private readonly listingRepositoryRead: IListingRepositoryRead;
   private readonly userRepositoryRead: IUserRepositoryRead;
   private readonly profileRepositoryRead: IProfileRepositoryRead;
   private readonly sealService: ISealService;
   private readonly eventPublisher: IEventPublisher;
+  private readonly proofCodeIssuer: IPossessionProofCodeIssuer;
+  private readonly proofCodeAnalysisEnqueue?: IProofCodeAnalysisEnqueuePort;
 
   constructor({
     verificationCaseRepositoryRead,
     verificationCaseRepositoryWrite,
+    evidenceItemRepositoryRead,
     listingRepositoryRead,
     userRepositoryRead,
     profileRepositoryRead,
     sealService,
     eventPublisher,
+    proofCodeIssuer,
+    proofCodeAnalysisEnqueue,
   }: IParamsVerificationCaseService) {
     this.verificationCaseRepositoryRead = verificationCaseRepositoryRead;
     this.verificationCaseRepositoryWrite = verificationCaseRepositoryWrite;
+    this.evidenceItemRepositoryRead = evidenceItemRepositoryRead;
     this.listingRepositoryRead = listingRepositoryRead;
     this.userRepositoryRead = userRepositoryRead;
     this.profileRepositoryRead = profileRepositoryRead;
     this.sealService = sealService;
     this.eventPublisher = eventPublisher;
+    this.proofCodeIssuer = proofCodeIssuer;
+    this.proofCodeAnalysisEnqueue = proofCodeAnalysisEnqueue;
   }
 
   async openCase(
@@ -123,21 +143,23 @@ export class VerificationCaseService implements IVerificationCaseService {
     const created =
       await this.verificationCaseRepositoryWrite.createVerificationCase(entity);
 
+    const withChallenge = await this.ensureChallenge(created);
+
     await this.eventPublisher.publish(
       createEventEnvelope({
         eventId: randomUUID(),
         eventType: 'verification.case.submitted',
-        aggregateId: created.id,
+        aggregateId: withChallenge.id,
         producerModule: 'verification',
         correlationId: randomUUID(),
         payload: {
-          caseId: created.id,
-          listingId: created.listingId,
+          caseId: withChallenge.id,
+          listingId: withChallenge.listingId,
         },
       }),
     );
 
-    return created;
+    return toPublicVerificationCase(withChallenge);
   }
 
   async ensureOpenCaseForListing(
@@ -148,7 +170,7 @@ export class VerificationCaseService implements IVerificationCaseService {
         listingId,
       );
     if (openCase) {
-      return openCase;
+      return toPublicVerificationCase(openCase);
     }
 
     try {
@@ -169,7 +191,7 @@ export class VerificationCaseService implements IVerificationCaseService {
             listingId,
           );
         if (raced) {
-          return raced;
+          return toPublicVerificationCase(raced);
         }
       }
       throw error;
@@ -187,13 +209,82 @@ export class VerificationCaseService implements IVerificationCaseService {
         details: { id },
       } as IThrowedError;
     }
-    return verificationCase;
+    return toPublicVerificationCase(verificationCase);
+  }
+
+  async getProofCodePlaintext(
+    actor: IActorContext,
+    caseId: string,
+  ): Promise<IProofCode> {
+    const verificationCase =
+      await this.verificationCaseRepositoryRead.findVerificationCaseById(
+        caseId,
+      );
+    if (!verificationCase) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Verification case not found',
+        details: { id: caseId },
+      } as IThrowedError;
+    }
+
+    const listing = await this.listingRepositoryRead.findListingById(
+      verificationCase.listingId,
+    );
+    if (!listing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { listingId: verificationCase.listingId },
+      } as IThrowedError;
+    }
+
+    assertOwnerOrAdmin(actor, listing.sellerId);
+
+    const ensured = await this.ensureChallenge(verificationCase);
+    const issued = this.proofCodeIssuer.issueForCase(ensured.id);
+
+    return {
+      code: issued.code,
+      caseId: ensured.id,
+      listingId: ensured.listingId,
+      issuedAt: ensured.proofCodeIssuedAt ?? new Date(),
+    };
+  }
+
+  /**
+   * Opens (or reuses) the verification case for a listing owned by the actor,
+   * then returns the possession proof code — so sellers can photograph the code
+   * during draft media capture, before final submit.
+   */
+  async getProofCodeForListing(
+    actor: IActorContext,
+    listingId: string,
+  ): Promise<IProofCode> {
+    const listing = await this.listingRepositoryRead.findListingById(listingId);
+    if (!listing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { listingId },
+      } as IThrowedError;
+    }
+
+    assertOwnerOrAdmin(actor, listing.sellerId);
+
+    const openCase = await this.ensureOpenCaseForListing(listingId);
+    return this.getProofCodePlaintext(actor, openCase.id);
   }
 
   async listVerificationCases(
     filter: Partial<IVerificationCase> = {},
   ): Promise<IVerificationCase[]> {
-    return this.verificationCaseRepositoryRead.listVerificationCases(filter);
+    const cases =
+      await this.verificationCaseRepositoryRead.listVerificationCases(filter);
+    return cases.map(toPublicVerificationCase);
   }
 
   async listModerationQueue(
@@ -233,7 +324,17 @@ export class VerificationCaseService implements IVerificationCaseService {
     id: string,
     params: IParamsAssignReviewer,
   ): Promise<IVerificationCase> {
-    const existing = await this.getVerificationCaseById(id);
+    const existing =
+      await this.verificationCaseRepositoryRead.findVerificationCaseById(id);
+    if (!existing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Verification case not found',
+        details: { id },
+      } as IThrowedError;
+    }
+
     this.assertTransition(
       existing.status,
       EVerificationCaseStatus.IN_REVIEW,
@@ -247,6 +348,9 @@ export class VerificationCaseService implements IVerificationCaseService {
         details: { field: 'moderatorId' },
       } as IThrowedError;
     }
+
+    await this.ensureChallenge(existing);
+    await this.assertProofEvidenceEligible(existing);
 
     const updated =
       await this.verificationCaseRepositoryWrite.updateVerificationCaseById(
@@ -264,7 +368,10 @@ export class VerificationCaseService implements IVerificationCaseService {
         details: { id },
       } as IThrowedError;
     }
-    return updated;
+
+    this.enqueueProofCodeAnalysisFallback(updated.id);
+
+    return toPublicVerificationCase(updated);
   }
 
   async approveCase(
@@ -330,7 +437,7 @@ export class VerificationCaseService implements IVerificationCaseService {
       sourceEventId: `seal-granted:${updated.id}`,
     });
 
-    return updated;
+    return toPublicVerificationCase(updated);
   }
 
   async rejectCase(
@@ -384,7 +491,7 @@ export class VerificationCaseService implements IVerificationCaseService {
       }),
     );
 
-    return updated;
+    return toPublicVerificationCase(updated);
   }
 
   async requestChangesCase(
@@ -459,7 +566,128 @@ export class VerificationCaseService implements IVerificationCaseService {
       }),
     );
 
+    return toPublicVerificationCase(updated);
+  }
+
+  private async ensureChallenge(
+    verificationCase: IVerificationCase,
+  ): Promise<IVerificationCase> {
+    if (verificationCase.proofCodeHash && verificationCase.proofCodeIssuedAt) {
+      return verificationCase;
+    }
+
+    const issued = this.proofCodeIssuer.issueForCase(verificationCase.id);
+    const issuedAt = verificationCase.proofCodeIssuedAt ?? new Date();
+    const updated =
+      await this.verificationCaseRepositoryWrite.updateVerificationCaseById(
+        verificationCase.id,
+        {
+          proofCodeHash: issued.hash,
+          proofCodeIssuedAt: issuedAt,
+        },
+      );
+    if (!updated) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Verification case not found',
+        details: { id: verificationCase.id },
+      } as IThrowedError;
+    }
+
+    Logger.info(
+      `verification.proof_code.issued caseId=${updated.id} listingId=${updated.listingId}`,
+    );
+
     return updated;
+  }
+
+  private async assertProofEvidenceEligible(
+    verificationCase: IVerificationCase,
+  ): Promise<void> {
+    const listing = await this.listingRepositoryRead.findListingById(
+      verificationCase.listingId,
+    );
+    if (!listing) {
+      throw {
+        status: 404,
+        errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+        message: 'Listing not found',
+        details: { listingId: verificationCase.listingId },
+      } as IThrowedError;
+    }
+
+    const evidence = await this.evidenceItemRepositoryRead.listByCaseId(
+      verificationCase.id,
+    );
+    if (isMinProofEvidenceEligible(evidence, listing)) {
+      return;
+    }
+
+    const listingHasVideo = Boolean(
+      listing.media?.videoAssetId || listing.media?.videoUrl,
+    );
+    const hasPhoto = evidence.some(
+      (item) => item.type === EEvidenceType.PHOTO,
+    );
+    if (!hasPhoto) {
+      Logger.info(
+        `verification.assign.rejected_missing_evidence caseId=${verificationCase.id} missing=PHOTO`,
+      );
+      throw {
+        status: 400,
+        errorCode: EErrorCode.STATUS_REQUIRES_FIELDS,
+        message: 'PHOTO evidence is required before assign',
+        details: { field: 'evidence', required: ['PHOTO'] },
+      } as IThrowedError;
+    }
+
+    if (listingHasVideo) {
+      Logger.info(
+        `verification.assign.rejected_missing_evidence caseId=${verificationCase.id} missing=VIDEO`,
+      );
+      throw {
+        status: 400,
+        errorCode: EErrorCode.STATUS_REQUIRES_FIELDS,
+        message: 'VIDEO evidence is required when listing has video',
+        details: { field: 'evidence', required: ['PHOTO', 'VIDEO'] },
+      } as IThrowedError;
+    }
+  }
+
+  /**
+   * Must fallback: if eligible and no recent COMPLETED|UNAVAILABLE possession analysis,
+   * fire-and-forget enqueue (does not block assign HTTP on Gemini).
+   */
+  private enqueueProofCodeAnalysisFallback(caseId: string): void {
+    const enqueue = this.proofCodeAnalysisEnqueue;
+    if (!enqueue) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        if (enqueue.findLatestStatus) {
+          const latest = await enqueue.findLatestStatus(caseId);
+          if (
+            latest === EProofCodeAnalysisStatus.COMPLETED ||
+            latest === EProofCodeAnalysisStatus.UNAVAILABLE
+          ) {
+            return;
+          }
+        }
+        await enqueue.requestAnalysis(caseId);
+      } catch (error: unknown) {
+        Logger.info('proofCodeAnalysis.assign_fallback enqueue failed', {
+          eventName: 'proof_code_analysis_assign_fallback_failed',
+          caseId,
+          reason:
+            error instanceof Error
+              ? error.message.slice(0, 120)
+              : 'enqueue_error',
+        });
+      }
+    })();
   }
 
   private parseModerationStatusFilter(
@@ -644,9 +872,10 @@ export class VerificationCaseService implements IVerificationCaseService {
       const sellerId = listing?.sellerId ?? '';
       const user = sellerId ? userById.get(sellerId) : undefined;
       const profile = sellerId ? profileByUserId.get(sellerId) : undefined;
+      const publicCase = toPublicVerificationCase(verificationCase);
 
       return {
-        ...verificationCase,
+        ...publicCase,
         aiAnalysisScore: this.extractAiAnalysisScore(verificationCase.checklist),
         listingTitle: listing?.title ?? verificationCase.listingId,
         listingStatus: listing?.status,

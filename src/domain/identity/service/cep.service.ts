@@ -31,8 +31,8 @@ export class CepService implements ICepService {
       } as IThrowedError;
     }
 
-    const result = await this.cepLookup.lookup(digits);
-    if (!result) {
+    const cepLookupResult = await this.cepLookup.lookup(digits);
+    if (!cepLookupResult) {
       throw {
         status: 404,
         errorCode: EErrorCode.RESOURCE_NOT_FOUND,
@@ -40,6 +40,6 @@ export class CepService implements ICepService {
         details: { postalCode: digits },
       } as IThrowedError;
     }
-    return result;
+    return cepLookupResult;
   }
 }

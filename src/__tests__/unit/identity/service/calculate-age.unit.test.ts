@@ -26,6 +26,11 @@ function buildUserService(store: Map<string, IUser>) {
       findUserByCpf: async (cpf) =>
         [...store.values()].find((user) => user.cpf === cpf) ?? null,
       listUsers: async () => [...store.values()],
+      findUserIdsBySearchQuery: async () => [],
+      findUsersByIds: async (ids) =>
+        ids
+          .map((id) => store.get(id))
+          .filter((user): user is IUser => user !== undefined),
     },
     userRepositoryWrite: {
       createUser: async (user) => {

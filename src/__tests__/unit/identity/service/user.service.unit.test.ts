@@ -25,6 +25,11 @@ function buildService(overrides: {
       findUserByCpf: async (cpf: string) =>
         [...users.values()].find((u) => u.cpf === cpf) ?? null,
       listUsers: async () => [...users.values()],
+      findUserIdsBySearchQuery: async () => [],
+      findUsersByIds: async (ids: string[]) =>
+        ids
+          .map((id) => users.get(id))
+          .filter((user): user is IUser => user !== undefined),
     },
     userRepositoryWrite: {
       createUser: async (user: IUser) => {

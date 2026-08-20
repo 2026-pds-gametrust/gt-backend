@@ -6,7 +6,7 @@ Evidências que sustentam o selo — auditabilidade.
 
 ## Autorização
 
-Público — sem Authorization. Discovery e auth register/login/refresh (CEP exige Bearer).
+Bearer obrigatório (`Authorization: Bearer <accessToken>`). Qualquer group válido (`app-user`+).
 
 ## Sequência típica
 
@@ -23,6 +23,7 @@ const res = await fetch('http://localhost:3000/verification-cases/550e8400-e29b-
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${accessToken}`,
   },
   body: JSON.stringify({
   "id": "string",

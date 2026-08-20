@@ -5,6 +5,7 @@ import supertest from 'supertest';
 import { app } from '../../../../../jest/setup-integration-tests';
 import { CategoryModel } from '../../../../infraestructure/db/mongo/models/category.model';
 import { UserModel } from '../../../../infraestructure/db/mongo/models/user.model';
+import { EErrorCode } from '../../../../domain/common/errors/enums/EErrorCode';
 import { EShippingMode } from '../../../../domain/listings/entity/enums/EShippingMode';
 import { validCategoryMock } from '../../../__mocks__/category.mock';
 import { validListingMock } from '../../../__mocks__/listing.mock';
@@ -69,7 +70,7 @@ async function seedListing() {
 
 describe('when verification HTTP list get reject and evidence routes are called', () => {
   it('should cover list get reject and list evidence', async () => {
-    const { listing } = await seedListing();
+    const { user, listing } = await seedListing();
 
     const caseId = new Types.ObjectId().toHexString();
     const opened = await supertest(app.app).post('/verification-cases').send({
@@ -92,23 +93,36 @@ describe('when verification HTTP list get reject and evidence routes are called'
     expect(got.statusCode).toBe(200);
     expect(got.body.id).toBe(caseId);
 
-    await supertest(app.app)
-      .post(`/verification-cases/${caseId}/assign`)
-      .set('Authorization', `Bearer ${backofficeBearer()}`)
-      .send({ moderatorId: 'mod-cov' });
-
+    const sellerToken = signTestAccessToken({
+      actorId: user.id,
+      groups: [EUserGroup.APP_USER],
+    });
     const evidenceId = new Types.ObjectId().toHexString();
     await supertest(app.app)
       .post(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`)
       .send({
         id: evidenceId,
         type: 'PHOTO',
         storageKey: 'private/evidence/cov.jpg',
       });
+    await supertest(app.app)
+      .post(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({
+        id: new Types.ObjectId().toHexString(),
+        type: 'VIDEO',
+        storageKey: 'private/evidence/cov.mp4',
+      });
 
-    const evidenceList = await supertest(app.app).get(
-      `/verification-cases/${caseId}/evidence`,
-    );
+    await supertest(app.app)
+      .post(`/verification-cases/${caseId}/assign`)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
+      .send({ moderatorId: 'mod-cov' });
+
+    const evidenceList = await supertest(app.app)
+      .get(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`);
     expect(evidenceList.statusCode).toBe(200);
     expect(
       evidenceList.body.some((item: { id: string }) => item.id === evidenceId),
@@ -120,6 +134,55 @@ describe('when verification HTTP list get reject and evidence routes are called'
       .send({ reason: 'Incomplete evidence' });
     expect(rejected.statusCode).toBe(200);
     expect(rejected.body.status).toBe('REJECTED');
+  });
+});
+
+describe('when listing verification cases with OpenAPI query contract', () => {
+  it('should return 400 FIELD_INVALID for unknown status', async () => {
+    const response = await supertest(app.app)
+      .get('/verification-cases')
+      .query({ status: 'UNKNOWN' })
+      .set('Authorization', `Bearer ${backofficeBearer()}`);
+    expect(response.statusCode).toBe(400);
+    expect(response.body.code).toBe(EErrorCode.FIELD_INVALID);
+  });
+
+  it('should return 400 FIELD_INVALID when limit is 0', async () => {
+    const response = await supertest(app.app)
+      .get('/verification-cases')
+      .query({ limit: 0 })
+      .set('Authorization', `Bearer ${backofficeBearer()}`);
+    expect(response.statusCode).toBe(400);
+    expect(response.body.code).toBe(EErrorCode.FIELD_INVALID);
+  });
+
+  it('should return 400 FIELD_INVALID when limit is 101', async () => {
+    const response = await supertest(app.app)
+      .get('/verification-cases')
+      .query({ limit: 101 })
+      .set('Authorization', `Bearer ${backofficeBearer()}`);
+    expect(response.statusCode).toBe(400);
+    expect(response.body.code).toBe(EErrorCode.FIELD_INVALID);
+  });
+
+  it('should return 200 for CHANGES_REQUESTED with coerced query types', async () => {
+    const response = await supertest(app.app)
+      .get('/verification-cases')
+      .query({
+        status: 'CHANGES_REQUESTED',
+        hasAiScore: 'true',
+        minScore: '0',
+        maxScore: '100',
+        limit: '1',
+        offset: '0',
+      })
+      .set('Authorization', `Bearer ${backofficeBearer()}`);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      items: expect.any(Array),
+      limit: 1,
+      offset: 0,
+    });
   });
 });
 
@@ -162,18 +225,31 @@ describe('when verification HTTP seal get and revoke routes are called', () => {
       listingId: listing.id,
     });
 
-    await supertest(app.app)
-      .post(`/verification-cases/${caseId}/assign`)
-      .set('Authorization', `Bearer ${backofficeBearer()}`)
-      .send({ moderatorId: 'mod-seal' });
-
+    const sellerToken = signTestAccessToken({
+      actorId: user.id,
+      groups: [EUserGroup.APP_USER],
+    });
     await supertest(app.app)
       .post(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`)
       .send({
         id: new Types.ObjectId().toHexString(),
         type: 'PHOTO',
         storageKey: 'private/evidence/seal.jpg',
       });
+    await supertest(app.app)
+      .post(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({
+        id: new Types.ObjectId().toHexString(),
+        type: 'VIDEO',
+        storageKey: 'private/evidence/seal.mp4',
+      });
+
+    await supertest(app.app)
+      .post(`/verification-cases/${caseId}/assign`)
+      .set('Authorization', `Bearer ${backofficeBearer()}`)
+      .send({ moderatorId: 'mod-seal' });
 
     const approved = await supertest(app.app)
       .post(`/verification-cases/${caseId}/approve`)

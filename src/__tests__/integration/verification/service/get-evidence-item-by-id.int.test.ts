@@ -41,12 +41,15 @@ async function seedEvidence() {
     id: new Types.ObjectId().toHexString(),
     listingId: listing.id,
   });
-  const evidence = await evidenceItemService.addEvidence({
-    id: new Types.ObjectId().toHexString(),
-    caseId: opened.id,
-    type: EEvidenceType.PHOTO,
-    storageKey: 'private/bucket/key.jpg',
-  });
+  const evidence = await evidenceItemService.addEvidence(
+    {
+      id: new Types.ObjectId().toHexString(),
+      caseId: opened.id,
+      type: EEvidenceType.PHOTO,
+      storageKey: 'private/bucket/key.jpg',
+    },
+    sellerActor(user.id),
+  );
   return { evidence };
 }
 

@@ -8,4 +8,11 @@ export interface IVerificationCaseRepositoryWrite {
     id: string,
     data: Partial<IVerificationCase>,
   ): Promise<IVerificationCase | null>;
+  /** Merge-safe: only sets checklist.proofCodeAnalysis (does not replace whole checklist). */
+  setChecklistProofCodeAnalysis(
+    id: string,
+    proofCodeAnalysis: NonNullable<
+      IVerificationCase['checklist']
+    >['proofCodeAnalysis'],
+  ): Promise<IVerificationCase | null>;
 }

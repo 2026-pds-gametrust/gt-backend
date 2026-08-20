@@ -2,7 +2,7 @@
 
 | Name | In | Required | Type | Description |
 |------|----|-------------|------|----------|
-| `status` | query | no | enum(PENDING \| IN_REVIEW \| APPROVED \| REJECTED) |  |
+| `status` | query | no | VerificationCaseStatus |  |
 | `q` | query | no | string | Free-text search across case, listing and seller fields |
 | `moderatorId` | query | no | string |  |
 | `minScore` | query | no | integer | Minimum AI validation score (0–100) from checklist.aiAnalysis |

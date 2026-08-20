@@ -8,13 +8,14 @@
 |-------|------|-------------|----------|
 | `id` | string | sim |  |
 | `listingId` | string | sim |  |
-| `status` | enum(PENDING \| IN_REVIEW \| APPROVED \| CHANGES_REQUESTED \| REJECTED) | sim |  |
+| `status` | VerificationCaseStatus | sim |  |
 | `checklist` | object | não |  |
 | `decisionReason` | string | não |  |
 | `moderatorId` | string | não |  |
 | `requiredChanges` | array<RequiredChange> | não |  |
 | `revisionBaseline` | RevisionBaseline | não |  |
 | `previousCaseId` | string | não |  |
+| `proofCodeIssuedAt` | string (date-time) | não | When the possession challenge was issued (hash is internal-only) |
 | `createdAt` | string (date-time) | sim |  |
 | `updatedAt` | string (date-time) | não |  |
 
@@ -44,6 +45,7 @@
     "description": "string"
   },
   "previousCaseId": "string",
+  "proofCodeIssuedAt": "2026-08-07T12:00:00.000Z",
   "createdAt": "2026-08-07T12:00:00.000Z",
   "updatedAt": "2026-08-07T12:00:00.000Z"
 }
@@ -51,10 +53,27 @@
 
 ## Erros documentados
 
+- **400** — Minimum proof evidence missing (PHOTO; VIDEO when listing has video)
 - **401** — Missing, malformed, expired, invalid or logout-revoked Bearer token — AUTH_UNAUTHORIZED
 - **403** — Forbidden
 - **404** — Not found
 - **409** — Invalid transition
+
+### HTTP 400
+
+Minimum proof evidence missing (PHOTO; VIDEO when listing has video)
+
+**Exemplo:**
+
+```json
+{
+  "error": "string",
+  "code": "RESOURCE_NOT_FOUND",
+  "contextInfo": {}
+}
+```
+
+Validação / `USER_UNDERAGE` / `FIELD_INVALID` (register duplicado também é 400). Destacar campos; **não** tratar 400 de register como “email já existe” na copy.
 
 ### HTTP 401
 

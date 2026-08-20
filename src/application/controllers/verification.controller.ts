@@ -4,27 +4,33 @@ import {
   handleTranslatedError,
 } from '@sauvvitech/st-packages';
 import { Request, Response, Router } from 'express';
+import { IProofCodeAnalysisService } from '../../domain/ai/service/proof-code-analysis.service.interface';
 import { IController } from '../../domain/server/interfaces/IController';
+import { IParamsListModerationQueue } from '../../domain/verification/entity/interfaces/moderation-queue.interface';
 import { EvidenceItemService } from '../../domain/verification/service/evidence-item.service';
 import { SealService } from '../../domain/verification/service/seal.service';
 import { VerificationCaseService } from '../../domain/verification/service/verification-case.service';
 import { ErrorCatalog } from '../../infraestructure/i18n/error-catalog';
 import { requireAccessToken } from '../middleware/require-access-token';
+import '../middleware/attach-actor-context';
 
 export class VerificationController implements IController {
   router: Router;
   private readonly verificationCaseService: VerificationCaseService;
   private readonly evidenceItemService: EvidenceItemService;
   private readonly sealService: SealService;
+  private readonly proofCodeAnalysisService: IProofCodeAnalysisService;
 
   constructor(
     verificationCaseService: VerificationCaseService,
     evidenceItemService: EvidenceItemService,
     sealService: SealService,
+    proofCodeAnalysisService: IProofCodeAnalysisService,
   ) {
     this.verificationCaseService = verificationCaseService;
     this.evidenceItemService = evidenceItemService;
     this.sealService = sealService;
+    this.proofCodeAnalysisService = proofCodeAnalysisService;
     this.router = Router();
     this.initRoutes();
   }
@@ -35,6 +41,28 @@ export class VerificationController implements IController {
       requireAccessToken,
       authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
       this.listVerificationCases,
+    );
+    this.router.get(
+      '/listings/:listingId/proof-code',
+      requireAccessToken,
+      this.getProofCodeForListing,
+    );
+    this.router.get(
+      '/verification-cases/:id/proof-code',
+      requireAccessToken,
+      this.getProofCode,
+    );
+    this.router.get(
+      '/verification-cases/:id/proof-code-analysis',
+      requireAccessToken,
+      authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
+      this.getProofCodeAnalysis,
+    );
+    this.router.post(
+      '/verification-cases/:id/proof-code-analysis/reanalyze',
+      requireAccessToken,
+      authorizeByGroup([EUserGroup.BACKOFFICE, EUserGroup.ADMIN]),
+      this.reanalyzeProofCodeAnalysis,
     );
     this.router.get(
       '/verification-cases/:id',
@@ -70,10 +98,12 @@ export class VerificationController implements IController {
 
     this.router.get(
       '/verification-cases/:caseId/evidence',
+      requireAccessToken,
       this.listEvidence,
     );
     this.router.post(
       '/verification-cases/:caseId/evidence',
+      requireAccessToken,
       this.addEvidence,
     );
 
@@ -88,41 +118,24 @@ export class VerificationController implements IController {
   }
 
   listVerificationCases = async (
-    req: Request,
+    req: Request<
+      unknown,
+      unknown,
+      unknown,
+      IParamsListModerationQueue
+    >,
     res: Response,
   ): Promise<void> => {
     try {
-      const status =
-        typeof req.query.status === 'string' ? req.query.status : undefined;
-      const q = typeof req.query.q === 'string' ? req.query.q : undefined;
-      const moderatorId =
-        typeof req.query.moderatorId === 'string'
-          ? req.query.moderatorId
-          : undefined;
-      const limit =
-        req.query.limit !== undefined ? Number(req.query.limit) : undefined;
-      const offset =
-        req.query.offset !== undefined ? Number(req.query.offset) : undefined;
-      const minScore =
-        req.query.minScore !== undefined ? Number(req.query.minScore) : undefined;
-      const maxScore =
-        req.query.maxScore !== undefined ? Number(req.query.maxScore) : undefined;
-      const hasAiScore =
-        req.query.hasAiScore === 'true'
-          ? true
-          : req.query.hasAiScore === 'false'
-            ? false
-            : undefined;
-
       const page = await this.verificationCaseService.listModerationQueue({
-        status: status as never,
-        q,
-        moderatorId,
-        minScore,
-        maxScore,
-        hasAiScore,
-        limit,
-        offset,
+        status: req.query.status,
+        q: req.query.q,
+        moderatorId: req.query.moderatorId,
+        minScore: req.query.minScore,
+        maxScore: req.query.maxScore,
+        hasAiScore: req.query.hasAiScore,
+        limit: req.query.limit,
+        offset: req.query.offset,
       });
       res.status(200).json(page);
     } catch (error) {
@@ -140,6 +153,75 @@ export class VerificationController implements IController {
           req.params.id,
         );
       res.status(200).json(verificationCase);
+    } catch (error) {
+      handleTranslatedError(error, ErrorCatalog, res);
+    }
+  };
+
+  getProofCode = async (
+    req: Request<{ id: string }>,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const proofCode = await this.verificationCaseService.getProofCodePlaintext(
+        req.actor,
+        req.params.id,
+      );
+      res.status(200).json(proofCode);
+    } catch (error) {
+      handleTranslatedError(error, ErrorCatalog, res);
+    }
+  };
+
+  getProofCodeForListing = async (
+    req: Request<{ listingId: string }>,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const proofCode =
+        await this.verificationCaseService.getProofCodeForListing(
+          req.actor,
+          req.params.listingId,
+        );
+      res.status(200).json(proofCode);
+    } catch (error) {
+      handleTranslatedError(error, ErrorCatalog, res);
+    }
+  };
+
+  getProofCodeAnalysis = async (
+    req: Request<{ id: string }>,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const analysis = await this.proofCodeAnalysisService.getAnalysisForCase(
+        req.params.id,
+        req.actor!,
+      );
+      res.status(200).json(analysis);
+    } catch (error) {
+      handleTranslatedError(error, ErrorCatalog, res);
+    }
+  };
+
+  reanalyzeProofCodeAnalysis = async (
+    req: Request<{ id: string }>,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const caseId = String(req.params.id ?? '').trim();
+      await this.proofCodeAnalysisService.assertModeratorMayReanalyze(
+        caseId,
+        req.actor!,
+      );
+      // Fire-and-forget: 202 must not wait on the vision provider.
+      void this.proofCodeAnalysisService
+        .requestAnalysis(caseId, { force: true })
+        .catch(() => undefined);
+      res.status(202).json({
+        caseId,
+        status: 'PENDING',
+      });
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);
     }
@@ -234,6 +316,7 @@ export class VerificationController implements IController {
     try {
       const items = await this.evidenceItemService.listByCaseId(
         req.params.caseId,
+        req.actor,
       );
       res.status(200).json(items);
     } catch (error) {
@@ -246,14 +329,17 @@ export class VerificationController implements IController {
     res: Response,
   ): Promise<void> => {
     try {
-      const created = await this.evidenceItemService.addEvidence({
-        id: req.body.id,
-        caseId: req.params.caseId,
-        type: req.body.type,
-        storageKey: req.body.storageKey,
-        assetId: req.body.assetId,
-        contentHash: req.body.contentHash,
-      });
+      const created = await this.evidenceItemService.addEvidence(
+        {
+          id: req.body.id,
+          caseId: req.params.caseId,
+          type: req.body.type,
+          storageKey: req.body.storageKey,
+          assetId: req.body.assetId,
+          contentHash: req.body.contentHash,
+        },
+        req.actor,
+      );
       res.status(201).json(created);
     } catch (error) {
       handleTranslatedError(error, ErrorCatalog, res);

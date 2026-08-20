@@ -38,6 +38,7 @@
         "description": "string"
       },
       "previousCaseId": "string",
+      "proofCodeIssuedAt": "2026-08-07T12:00:00.000Z",
       "createdAt": "2026-08-07T12:00:00.000Z",
       "updatedAt": "2026-08-07T12:00:00.000Z",
       "listingTitle": "string",

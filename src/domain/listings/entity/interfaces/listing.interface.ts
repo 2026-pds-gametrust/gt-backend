@@ -46,6 +46,9 @@ export interface IListing {
   buyNowEnabled: boolean;
   quantity: number;
   status: EListingStatus;
+  reservedByOrderId?: string;
+  reservedAt?: Date;
+  reservationExpiresAt?: Date;
   qualityHints?: Record<string, unknown>;
   createdAt: Date;
   updatedAt?: Date;

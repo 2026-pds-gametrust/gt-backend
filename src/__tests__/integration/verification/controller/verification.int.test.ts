@@ -63,21 +63,35 @@ describe('when we open assign and approve a verification case via HTTP', () => {
     expect(opened.statusCode).toBe(201);
     expect(opened.body.status).toBe('PENDING');
 
+    const sellerToken = signTestAccessToken({
+      actorId: user.id,
+      groups: [EUserGroup.APP_USER],
+    });
+    const photo = await supertest(app.app)
+      .post(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({
+        id: new Types.ObjectId().toHexString(),
+        type: 'PHOTO',
+        storageKey: 'private/evidence/1.jpg',
+      });
+    expect(photo.statusCode).toBe(201);
+    const video = await supertest(app.app)
+      .post(`/verification-cases/${caseId}/evidence`)
+      .set('Authorization', `Bearer ${sellerToken}`)
+      .send({
+        id: new Types.ObjectId().toHexString(),
+        type: 'VIDEO',
+        storageKey: 'private/evidence/1.mp4',
+      });
+    expect(video.statusCode).toBe(201);
+
     const assigned = await supertest(app.app)
       .post(`/verification-cases/${caseId}/assign`)
       .set('Authorization', `Bearer ${signTestAccessToken({ actorId: 'backoffice-actor', groups: [EUserGroup.BACKOFFICE] })}`)
       .send({ moderatorId: 'mod-1' });
     expect(assigned.statusCode).toBe(200);
     expect(assigned.body.status).toBe('IN_REVIEW');
-
-    const evidence = await supertest(app.app)
-      .post(`/verification-cases/${caseId}/evidence`)
-      .send({
-        id: new Types.ObjectId().toHexString(),
-        type: 'PHOTO',
-        storageKey: 'private/evidence/1.jpg',
-      });
-    expect(evidence.statusCode).toBe(201);
 
     const approved = await supertest(app.app)
       .post(`/verification-cases/${caseId}/approve`)

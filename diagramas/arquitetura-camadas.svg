@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="920" viewBox="0 0 1500 920" role="img" aria-labelledby="title desc">
+  <title id="title">GamerTrust  Arquitetura em camadas e fluxo de uma requisição</title>
+  <desc id="desc">À esquerda as camadas FSD do frontend-web; ao centro o fluxo HTTP; à direita as camadas do gt-backend.</desc>
+  <rect width="1500" height="920" fill="#FBFCFC"/>
+  <text x="750" y="42" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="700" fill="#1B2631">Figura 2  Arquitetura em camadas e fluxo de uma requisição</text>
+
+  <!-- Frontend column -->
+  <rect x="40" y="70" width="420" height="530" rx="8" fill="#EBF5FB" stroke="#1A5276" stroke-width="1.6"/>
+  <text x="250" y="102" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#1A5276">frontend-web (FSD)</text>
+  <rect x="70" y="126" width="360" height="56" rx="8" fill="#AED6F1" stroke="#1A5276"/>
+  <text x="250" y="160" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">01-app  router, providers, bootstrap</text>
+  <rect x="70" y="198" width="360" height="56" rx="8" fill="#D6EAF8" stroke="#1A5276"/>
+  <text x="250" y="232" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">02-pages / 03-widgets  telas (sem Axios)</text>
+  <rect x="70" y="270" width="360" height="56" rx="8" fill="#AED6F1" stroke="#1A5276"/>
+  <text x="250" y="304" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">04-features  Zustand + *-api.ts</text>
+  <rect x="70" y="342" width="360" height="56" rx="8" fill="#D6EAF8" stroke="#1A5276"/>
+  <text x="250" y="376" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">05-entities  IListing, ISeal, ITrustScore</text>
+  <rect x="70" y="414" width="360" height="56" rx="8" fill="#AED6F1" stroke="#1A5276"/>
+  <text x="250" y="448" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">06-shared  httpClient (Bearer) + UI base</text>
+  <text x="250" y="510" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1A5276">Importa só para baixo.</text>
+  <text x="250" y="530" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1A5276">Página não decide selo nem TrustScore.</text>
+
+  <!-- Flow column -->
+  <rect x="500" y="70" width="500" height="530" rx="8" fill="#FDFEFE" stroke="#34495E" stroke-width="1.6"/>
+  <text x="750" y="102" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#34495E">Fluxo HTTP</text>
+  <rect x="560" y="128" width="380" height="42" rx="8" fill="#D4E6F1" stroke="#1A5276"/>
+  <text x="750" y="154" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">1. Page dispara ação</text>
+  <rect x="560" y="186" width="380" height="42" rx="8" fill="#D4E6F1" stroke="#1A5276"/>
+  <text x="750" y="212" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1A5276">2. Feature chama *-api.ts</text>
+  <rect x="560" y="244" width="380" height="42" rx="8" fill="#FCF3CF" stroke="#B7950B"/>
+  <text x="750" y="270" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#7D6608">3. Axios + Bearer ’ REST</text>
+  <rect x="560" y="302" width="380" height="42" rx="8" fill="#D5F5E3" stroke="#0E6655"/>
+  <text x="750" y="328" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">4. JWT ’ ActorContext · OpenAPI</text>
+  <rect x="560" y="360" width="380" height="42" rx="8" fill="#D5F5E3" stroke="#0E6655"/>
+  <text x="750" y="386" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">5. Controller ’ Service</text>
+  <rect x="560" y="418" width="380" height="42" rx="8" fill="#ABEBC6" stroke="#0E6655"/>
+  <text x="750" y="444" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0E6655">6. Ownership + regra + persistência</text>
+  <rect x="560" y="476" width="380" height="42" rx="8" fill="#FADBD8" stroke="#922B21"/>
+  <text x="750" y="502" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#922B21">7. JSON + status · UI atualiza</text>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#34495E"/>
+    </marker>
+  </defs>
+  <line x1="750" y1="170" x2="750" y2="186" stroke="#34495E" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="750" y1="228" x2="750" y2="244" stroke="#34495E" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="750" y1="286" x2="750" y2="302" stroke="#34495E" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="750" y1="344" x2="750" y2="360" stroke="#34495E" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="750" y1="402" x2="750" y2="418" stroke="#34495E" stroke-width="1.6" marker-end="url(#arr)"/>
+  <line x1="750" y1="460" x2="750" y2="476" stroke="#34495E" stroke-width="1.6" marker-end="url(#arr)"/>
+
+  <!-- Backend column -->
+  <rect x="1040" y="70" width="420" height="530" rx="8" fill="#E8F8F5" stroke="#0E6655" stroke-width="1.6"/>
+  <text x="1250" y="102" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#0E6655">gt-backend (camadas)</text>
+  <rect x="1070" y="126" width="360" height="56" rx="8" fill="#ABEBC6" stroke="#0E6655"/>
+  <text x="1250" y="160" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">Application  Controller + OpenAPI</text>
+  <rect x="1070" y="198" width="360" height="56" rx="8" fill="#D5F5E3" stroke="#0E6655"/>
+  <text x="1250" y="232" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">Domain  Service (regra) + Entity</text>
+  <rect x="1070" y="270" width="360" height="56" rx="8" fill="#EAFAF1" stroke="#0E6655"/>
+  <text x="1250" y="304" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">Contrato I*RepositoryRead / Write</text>
+  <rect x="1070" y="342" width="360" height="56" rx="8" fill="#ABEBC6" stroke="#0E6655"/>
+  <text x="1250" y="376" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">Infraestructure  Mongo / S3 / SQS</text>
+  <rect x="1070" y="414" width="360" height="56" rx="8" fill="#D5F5E3" stroke="#0E6655"/>
+  <text x="1250" y="448" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#0E6655">Configuration  factories + env</text>
+  <text x="1250" y="510" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#0E6655">Domain não importa Infraestructure.</text>
+  <text x="1250" y="530" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#0E6655">Repository não lança 404 de produto.</text>
+
+  <!-- Nota -->
+  <rect x="40" y="630" width="1420" height="100" rx="8" fill="#F5EEF8" stroke="#7D3C98" stroke-width="1.4"/>
+  <text x="70" y="672" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#5B2C6F">Assíncrono (fora do request HTTP)</text>
+  <text x="70" y="698" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#5B2C6F">Service publica evento de domínio ’ SNS/SQS ’ outro módulo (ex.: listings.listing.published atualiza search_documents).</text>
+  <text x="70" y="720" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#5B2C6F">Chat usa o mesmo ActorContext; a entrega ao outro participante também ocorre via Socket.IO.</text>
+
+  <text x="750" y="880" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="12" fill="#5D6D7E">GamerTrust · Entrega 4  Metodologia · IFPR PDS 2026</text>
+</svg>

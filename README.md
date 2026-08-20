@@ -23,6 +23,7 @@ REST API for the **GamerTrust** marketplace. Stack: **Node.js**, **TypeScript**,
 | Architecture canon (`ARCH-*` / `DEC-*`) | [docs/architecture](docs/architecture/00-overview.md) |
 | Kit layers | [docs/architecture-and-layers.md](docs/architecture-and-layers.md) ([ARCHITECTURE.md](ARCHITECTURE.md)) |
 | DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) — steering: [`.devin/wiki.json`](.devin/wiki.json) — regenerate: [docs/en/contributing.md](docs/en/contributing.md#deepwiki) |
+| Academic delivery 4 (methodology) | ✅ [docs/E4-metodologia](docs/E4-metodologia/README.md) · diagrams in [diagramas/](diagramas/) |
 
 English is **normative** for identifiers, HTTP paths, and `ARCH-*` / `DEC-*`. If the two copies diverge, English wins.
 
@@ -146,6 +147,7 @@ Este é o serviço GamerTrust, não um boilerplate genérico. Regras de camadas:
 | Canon de arquitetura (`ARCH-*` / `DEC-*`) | [docs/architecture](docs/architecture/00-overview.md) |
 | Camadas do kit | [docs/architecture-and-layers.md](docs/architecture-and-layers.md) ([ARCHITECTURE.md](ARCHITECTURE.md)) |
 | DeepWiki | [deepwiki.com/gametrustt/gt-backend](https://deepwiki.com/gametrustt/gt-backend) — direção: [`.devin/wiki.json`](.devin/wiki.json) — regenerar: [docs/pt-BR/contributing.md](docs/pt-BR/contributing.md#deepwiki) |
+| Entrega 4 (Metodologia) | ✅ [docs/E4-metodologia](docs/E4-metodologia/README.md) · diagramas em [diagramas/](diagramas/) |
 
 O inglês é **normativo** para identificadores, paths HTTP e IDs `ARCH-*` / `DEC-*`. Se as duas cópias divergirem, o inglês vence.
 

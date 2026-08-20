@@ -46,14 +46,17 @@ async function seedOpenCase() {
 
 describe('when we add evidence to a case', () => {
   it('should persist evidence metadata', async () => {
-    const { opened } = await seedOpenCase();
+    const { user, opened } = await seedOpenCase();
 
-    const evidence = await evidenceItemService.addEvidence({
-      id: new Types.ObjectId().toHexString(),
-      caseId: opened.id,
-      type: EEvidenceType.PHOTO,
-      storageKey: 'private/bucket/key.jpg',
-    });
+    const evidence = await evidenceItemService.addEvidence(
+      {
+        id: new Types.ObjectId().toHexString(),
+        caseId: opened.id,
+        type: EEvidenceType.PHOTO,
+        storageKey: 'private/bucket/key.jpg',
+      },
+      sellerActor(user.id),
+    );
 
     expect(evidence.caseId).toBe(opened.id);
     expect(evidence.storageKey).toBe('private/bucket/key.jpg');
@@ -63,15 +66,38 @@ describe('when we add evidence to a case', () => {
 describe('when we add evidence to a missing case', () => {
   it('should reject with RESOURCE_NOT_FOUND', async () => {
     await expect(
-      evidenceItemService.addEvidence({
-        id: new Types.ObjectId().toHexString(),
-        caseId: 'missing-case',
-        type: EEvidenceType.PHOTO,
-        storageKey: 'private/key.jpg',
-      }),
+      evidenceItemService.addEvidence(
+        {
+          id: new Types.ObjectId().toHexString(),
+          caseId: 'missing-case',
+          type: EEvidenceType.PHOTO,
+          storageKey: 'private/key.jpg',
+        },
+        sellerActor('any-user'),
+      ),
     ).rejects.toMatchObject({
       status: 404,
       errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+    });
+  });
+});
+
+describe('when non-owner adds evidence', () => {
+  it('should reject with forbidden', async () => {
+    const { opened } = await seedOpenCase();
+
+    await expect(
+      evidenceItemService.addEvidence(
+        {
+          id: new Types.ObjectId().toHexString(),
+          caseId: opened.id,
+          type: EEvidenceType.PHOTO,
+          storageKey: 'private/key.jpg',
+        },
+        sellerActor('other-seller'),
+      ),
+    ).rejects.toMatchObject({
+      status: 403,
     });
   });
 });

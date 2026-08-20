@@ -55,6 +55,11 @@ function buildAuthHarness() {
     findUserByCpf: async (cpf: string) =>
       [...users.values()].find((user) => user.cpf === cpf) ?? null,
     listUsers: async () => [...users.values()],
+    findUserIdsBySearchQuery: async () => [],
+    findUsersByIds: async (ids: string[]) =>
+      ids
+        .map((id) => users.get(id))
+        .filter((user): user is IUser => user !== undefined),
   };
 
   const userRepositoryWrite = {
@@ -124,6 +129,17 @@ function buildAuthHarness() {
     },
     listProfiles: async () => [...profiles.values()],
     findProfilesNear: async () => [],
+    getMyProfile: async (actor) => {
+      const found = profiles.get(actor.actorId);
+      if (!found) {
+        throw {
+          status: 404,
+          errorCode: EErrorCode.RESOURCE_NOT_FOUND,
+          message: 'Profile not found',
+        };
+      }
+      return found;
+    },
   };
 
   const passwordHasher: IPasswordHasher = {

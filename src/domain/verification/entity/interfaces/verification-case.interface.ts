@@ -14,6 +14,9 @@ export interface IVerificationCase {
   requiredChanges?: IRequiredChange[];
   revisionBaseline?: IRevisionBaseline;
   previousCaseId?: string;
+  /** SHA-256 hex of plaintext code — internal only; never expose on HTTP. */
+  proofCodeHash?: string;
+  proofCodeIssuedAt?: Date;
   createdAt: Date;
   updatedAt?: Date;
 }
